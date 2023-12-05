@@ -213,6 +213,11 @@ run_qemu() {
     echo "QEMU_IMG=$QEMU_IMG" >> $run_opts_file
     echo "***: Start running Qemu..."
 
+    format=raw
+    if [ `echo $QEMU_IMG | grep -c qcow2` -ne 0 ];then
+        format="qcow2"
+    fi
+
     echo "${QEMU} -s $extra_opts \
         -kernel ${KERNEL_PATH} \
         -append \"${KERNEL_CMD}\" \
@@ -222,7 +227,7 @@ run_qemu() {
         -nographic \
         ${SHARED_CFG} \
         ${net_config} \
-        -drive file=${QEMU_IMG},index=0,media=disk,format=raw \
+        -drive file=${QEMU_IMG},index=0,media=disk,format=$format \
         -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 \
         -monitor telnet:127.0.0.1:12345,server,nowait \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
@@ -239,7 +244,7 @@ run_qemu() {
         ${SHARED_CFG} \
         ${net_config} \
         -monitor telnet:127.0.0.1:12345,server,nowait \
-        -drive file=${QEMU_IMG},index=0,media=disk,format=raw \
+        -drive file=${QEMU_IMG},index=0,media=disk,format=$format \
         -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
         -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
