@@ -3,6 +3,7 @@ extra_opts=""
 
 default_vars_file=./.vars.config
 opt_vars_file=""
+image_name=""
 
 top_file=/tmp/topo.txt
 echo "" > $top_file
@@ -24,6 +25,11 @@ warning() {
 
 error() {
     echo "Error: $@"
+}
+
+echo_task() {
+    echo "** Task: $@ **"
+    echo
 }
 
 get_val() {
@@ -265,6 +271,8 @@ shutdown_qemu() {
 }
 
 load_cxl_driver() {
+    echo_task "install cxl modules"
+
     echo "Loading cxl drivers: modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem cxl_pmem"
     ssh root@localhost -p $ssh_port "modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem"
     echo "Loading nd_pmem for creating region for cxl pmem"
@@ -340,6 +348,8 @@ set_default_options(){
     build_qemu=false
     deploy_kernel=false
     create_image=false
+    setup_qemu=false
+    setup_kernel=false
     run=false
     login=false
     reset=false
@@ -347,8 +357,6 @@ set_default_options(){
     install_ndctl=false
     gen_topo=false
     cmd_str=""
-    setup_qemu=false
-    setup_kernel=false
     load_drv=false
     kdb=false
     ndb=false
@@ -356,6 +364,7 @@ set_default_options(){
     opt_nbd="cxl"
     kconfig=false
     cxl_mem_setup=false
+    test_cxl=false
 }
 
 display_options() {
@@ -368,6 +377,7 @@ display_options() {
     echo " deploy_kernel $deploy_kernel"
     echo " KERNEL_ROOT $KERNEL_ROOT"
     echo " QEMU_ROOT $QEMU_ROOT"
+    echo " QEMU_IMG $QEMU_IMG "
     echo " create_image $create_image "
     echo " run $run "
     echo " shutdown $shutdown "
@@ -416,13 +426,14 @@ build_source_code() {
 }
 
 configure_kernel() {
+    echo_task "Configure kernel"
     cd $KERNEL_ROOT
     make menuconfig
 }
 
 setup_cxl_memory() {
     load_cxl_driver
-    echo
+
     echo "Show cxl device: cxl list -iu"
     ssh root@localhost -p $ssh_port "cxl list -iu"
 
@@ -448,41 +459,85 @@ setup_cxl_memory() {
 }
 
 kernel_deploy() {
+    echo_task "build kernel and install modules"
     build_source_code $KERNEL_ROOT
     sudo make modules_install
+    echo_task "build kernel and install modules--done"
 }
 
 create_qemu_image() {
-    IMG=$QEMU_IMG
-    DIR=/tmp/img
+    echo -e 'network:
+    version: 2
+    renderer: networkd
+    ethernets:
+        enp0s2:
+            dhcp4: true
+    ' > /tmp/netplan-config.yaml
+
+    echo_task "Create qemu image: $image_name"
+    IMG=$image_name
+    DIR=/tmp/img_dir
     qemu-img create $IMG 16g
     sudo mkfs.ext4 $IMG
     mkdir $DIR
+    echo_task "mount -o loop $IMG $DIR"
     sudo mount -o loop $IMG $DIR
+    if [ $? -ne 0 ];then
+        echo "mount $IMG to $DIR failed"
+        exit 1
+    fi
+
+    echo_task "debootstrap --arch amd64 stable $DIR"
     sudo debootstrap --arch amd64 stable $DIR
-    sudo chroot $DIR
-    echo '
-    passwd -d root
-    qemu-img convert -O qcow2 qemu-image.img qemu-image.qcow2
+    if [ $? -ne 0 ];then
+        echo_task "debootstrap failed"
+        exit 1
+    fi
+
+    echo_task "Copy ssh key to guest"
+    sudo mkdir $DIR/root/.ssh
+    cat ~/.ssh/*.pub > /tmp/authorized_keys
+    sudo cp /tmp/authorized_keys $DIR/root/.ssh/
+
+    echo_task "cp $/tmp/netplan-config.yaml $DIR/etc/netplan"
+    sudo mkdir -p $DIR/etc/netplan/
+    sudo cp /tmp/netplan-config.yaml $DIR/etc/netplan/config.yaml
+
+    echo "#! /bin/bash
+stty rows 80 cols 132
+mount -t 9p -o trans=virtio homeshare /home/fan
+mount -t 9p -o trans=virtio modshare /lib/modules
+" > /tmp/rc.local
+    chmod a+x /tmp/rc.local
+    sudo cp /tmp/rc.local $DIR/etc/
+    sudo mkdir -p $DIR/home/fan
+    sudo mkdir -p $DIR/lib/modules/
+
+    sudo chroot $DIR passwd -d root
+    sudo chroot $DIR apt-get update
+    sudo chroot $DIR apt-get install -y ssh netplan.io
     sudo umount $DIR
+
+    echo_task "Convert raw image to qcow2"
+    qemu-img convert -O qcow2 $IMG /tmp/qemu-image.qcow2
     rmdir $DIR
-    '
-    echo "qemu image: $IMG"
+
+    ssh-keygen -f "/home/fan/.ssh/known_hosts" -R "[localhost]:2024"
+    echo_task "qemu image: $IMG created!"
     exit
 }
 
 qemu_setup() {
-    url=$1
-    if [ "$url" == "" ];then
+    url=$qemu_url
+    if [ "$url" == "" ]; then
         echo "Error: missing url for qemu git clone"
         exit
     fi
-    if [ ! -d "$QEMU_ROOT/.." ];then
-        echo "Error: qemu directory not found!"
-        exit
+
+    if [ ! -d "$QEMU_ROOT" ]; then
+        mkdir -p $QEMU_ROOT
     fi
-    pwd=`pwd`
-    cd $QEMU_ROOT/..
+
     sudo apt install libglib2.0-dev libgcrypt20-dev zlib1g-dev \
         autoconf automake libtool bison flex libpixman-1-dev bc qemu-kvm \
         make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
@@ -497,15 +552,71 @@ qemu_setup() {
     echo
     echo "make -j8"
     make -j8
-    cd $pwd
 }
 
 kernel_setup() {
-    url=$1
-    if [ "$url" == "" ];then
-        echo "Error: missing url for qemu git clone"
+    echo_task "setup kernel: git clone, compile and install modules -- started"
+
+    url=$kernel_url
+    if [ "$url" == "" ]; then
+        echo "Error: missing url for kernel tree git clone"
         exit
     fi
+
+    if [ ! -d "$KERNEL_ROOT" ]; then
+        echo_task "Create the kernel root if not exist already..."
+        mkdir -p $KERNEL_ROOT
+
+        cd $KERNEL_ROOT
+        echo_task "git clone -b $kernel_branch --single-branch $url $KERNEL_ROOT"
+        git clone -b $kernel_branch --single-branch $url $KERNEL_ROOT
+    else
+        echo_task "$KERNEL_ROOT exists, try checking out branch ($kernel_branch)"
+        cd $KERNEL_ROOT
+        git checkout $kernel_branch
+        if [ "$?" != "0" ]; then
+            echo_task "git checkout $kernel_branch failed!"
+
+            echo "Do you want to DELETE $KERNEL_ROOT and git clone the kernel here?"
+            echo -n "input \"clone\" to continue, or else exit: "
+            read choice
+            if [ "$choice" == "clone" ]; then
+                mkdir /tmp/old-kernel-dir/
+                mv * /tmp/old-kernel-dir/
+                echo_task "git clone -b $kernel_branch --single-branch $url $KERNEL_ROOT"
+                git clone -b $kernel_branch --single-branch $url $KERNEL_ROOT
+            else
+                exit 1
+            fi
+        else
+            echo_task "Pull update for branch $kernel_branch"
+            git pull
+            if [ "$?" != "0" ]; then
+                echo "Pull update for branch $kernel_branch failed"
+                exit 1
+            fi
+        fi
+    fi
+
+    echo_task "Configure the kernel..."
+    echo -n "Configure mannually (1) or copy the example config (2): "
+    read choice
+
+    if [ "$choice" == "1" ]; then
+        make menuconfig
+    else
+        echo "Copy the example config as .config"
+        cp kconfig.example $KERNEL_ROOT/.config
+    fi
+
+    echo_task "Compile the kernel in $KERNEL_ROOT"
+    cd $KERNEL_ROOT
+    make -j 16
+
+    echo_task "Install kernel modules"
+    sudo make modules_install
+    
+    echo_task "$0 completed."
 }
 
 gdb_kernel() {
@@ -526,6 +637,7 @@ gdb_ndctl() {
 }
 
 setup_ndctl() {
+    echo_task "setup ndctl to install cxl tools"
     url=$1
 
     if [ "$url" == "" -o `echo $url | grep -c "github"` -eq 0 ]; then
@@ -545,10 +657,15 @@ setup_ndctl() {
     ssh root@localhost -p $ssh_port "cxl list"
     echo "**********************"
     if [ "$?" != "0" ];then
-        echo "Install ndctl failed!"
+        echo_task "Install ndctl failed!"
     else
-        echo "Install ndctl completed!"
+        echo_task "Install ndctl completed!"
     fi
+}
+
+cxl_test() {
+    setup_ndctl $ndctl_url
+    setup_cxl_memory
 }
 
 exec_cmd() {
@@ -582,7 +699,9 @@ parse_args() {
             -K|--kernel_root) KERNEL_ROOT="$2"; shift ;;
             -BK|--deploy-kernel) deploy_kernel=true ;;
             -BQ|--build-qemu) build_qemu=true ;;
-            -I|--create-image) create_image=true ;;
+            --create-image) create_image=true ;;
+            --cxl) test_cxl=true ;;
+            --image) image_name="$2"; shift ;;
             --install-ndctl) install_ndctl=true ;;
             --gen-topo) gen_topo=true ;;
             --ndctl-url) ndctl_url=$2; shift ;;
@@ -632,27 +751,36 @@ if [ "$opt_vars_file" != "" -o -f "$opt_vars_file" ] ;then
     source $opt_vars_file
 fi
 
-if [ -f $run_opts_file ]; then
-    source $run_opts_file
+if [ -n "$image_name" ];then
+    QEMU_IMG=$image_name
 fi
+
+display_options
+
+if $build_qemu; then
+    echo "Build the qemu"
+    build_source_code $QEMU_ROOT
+fi
+
+if $deploy_kernel ; then
+    kernel_deploy
+fi
+
+if $setup_qemu; then
+    qemu_setup
+fi
+
+if $setup_kernel; then
+    kernel_setup
+fi
+
+if $create_image && [ -n "$image_name" ];then
+    create_qemu_image
+fi
+
 
 QEMU=$QEMU_ROOT/build/qemu-system-x86_64
 KERNEL_PATH=$KERNEL_ROOT/arch/x86/boot/bzImage
-
-if  [ ! -f "$QEMU" ];then
-    error "Qemu binary not found!"
-    exit 1
-fi
-
-if  [ ! -f "$KERNEL_PATH" ];then
-    error "kernel image not found!"
-    exit 1
-fi
-
-if  [ ! -f "$QEMU_IMG" ];then
-    error "qemu image not found!"
-    exit 1
-fi
 
 if $gen_topo; then
     echo "Create cxl topology..."
@@ -662,24 +790,6 @@ else
     topo=$(get_cxl_topology $TOPO)
 fi
 
-display_options
-
-if $deploy_kernel ; then
-    echo "compile kernel, and install kernel modules"
-    kernel_deploy
-fi
-
-if $build_qemu; then
-    echo "Build the qemu"
-    build_source_code $QEMU_ROOT
-fi
-
-if $create_image; then
-    create_qemu_image
-fi
-
-
-
 if [ ! -s "$port" ];then
     ssh_port="2024"
 fi
@@ -687,6 +797,22 @@ net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,ne
 
 
 if $run; then
+    if  [ ! -f "$QEMU" ];then
+        error "Qemu binary not found!"
+        exit 1
+    fi
+
+    if  [ ! -f "$KERNEL_PATH" ];then
+        error "kernel image not found!"
+        exit 1
+    fi
+
+    if  [ ! -f "$QEMU_IMG" ];then
+        error "qemu image not found!"
+        exit 1
+    fi
+
+
     run_qemu "$topo"
 fi
 if $login; then
@@ -701,20 +827,16 @@ if $reset; then
     reset_qemu
 fi
 
+if $test_cxl; then
+    cxl_test
+fi
+
 if $install_ndctl; then
     setup_ndctl $ndctl_url
 fi
 
 if [ -n "$cmd_str" ]; then
     exec_cmd
-fi
-
-if $setup_qemu; then
-    qemu_setup $qemu_url
-fi
-
-if $setup_kernel; then
-    qemu_setup $kernel_url
 fi
 
 if $kdb; then
