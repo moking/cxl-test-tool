@@ -562,6 +562,8 @@ qemu_setup() {
 kernel_setup() {
     echo_task "setup kernel: git clone, compile and install modules -- started"
 
+    cur_dir=`pwd`
+
     url=$kernel_url
     if [ "$url" == "" ]; then
         echo "Error: missing url for kernel tree git clone"
@@ -611,7 +613,7 @@ kernel_setup() {
         make menuconfig
     else
         echo "Copy the example config as .config"
-        cp kconfig.example $KERNEL_ROOT/.config
+        cp $cur_dir/kconfig.example $KERNEL_ROOT/.config
     fi
 
     echo_task "Compile the kernel in $KERNEL_ROOT"
