@@ -1,0 +1,20 @@
+#! /bin/bash
+QEMU_ROOT=/home/fan/cxl/devel/qemu
+KERNEL_ROOT=/home/fan/cxl/linux-fixes/
+run_opts_file=/tmp/run_opts
+QEMU_IMG=/home/fan/cxl/images/qemu-image.img
+dbg_opt="cxl_acpi.dyndbg=+fplm cxl_pci.dyndbg=+fplm cxl_core.dyndbg=+fplm cxl_mem.dyndbg=+fplm cxl_pmem.dyndbg=+fplm cxl_port.dyndbg=+fplm cxl_region.dyndbg=+fplm cxl_test.dyndbg=+fplm cxl_mock.dyndbg=+fplm cxl_mock_mem.dyndbg=+fplm dax.dyndbg=+fplm dax_cxl.dyndbg=+fplm device_dax.dyndbg=+fplm"
+KERNEL_CMD="root=/dev/sda rw console=ttyS0,115200 ignore_loglevel nokaslr $dbg_opt"
+SHARED_CFG=""
+net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
+
+#section: needed if need to git pull for setup
+
+ndctl_url="https://github.com/pmem/ndctl"
+ndctl_branch="main"
+kernel_url="https://git.kernel.org/pub/scm/linux/kernel/git/cxl/cxl.git/"
+kernel_branch="fixes"
+qemu_url="https://gitlab.com/qemu-project/qemu.git"
+qemu_branch="master"
+
+accel_mode="tcg"
