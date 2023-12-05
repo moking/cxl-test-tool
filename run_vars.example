@@ -1,5 +1,5 @@
 #! /bin/bash
-QEMU_ROOT=/home/fan/cxl/devel/qemu
+QEMU_ROOT=/home/fan/cxl/qemu
 KERNEL_ROOT=/home/fan/cxl/linux-fixes/
 run_opts_file=/tmp/run_opts
 QEMU_IMG=/home/fan/cxl/images/qemu-image.img

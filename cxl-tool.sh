@@ -248,7 +248,7 @@ run_qemu() {
         -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
         -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
-        $topo 1>&/dev/null &
+        $topo 1>&/tmp/qemu.log &
 
     sleep 2
     running=`ps -ef | grep qemu-system-x86_64 | grep -c raw`
@@ -546,7 +546,7 @@ qemu_setup() {
     sudo apt install libglib2.0-dev libgcrypt20-dev zlib1g-dev \
         autoconf automake libtool bison flex libpixman-1-dev bc qemu-kvm \
         make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
-        libcap-ng-dev libattr1-dev
+        libcap-ng-dev libattr1-dev libslirp-dev libslirp0
     echo
     echo git clone -b $qemu_branch --single-branch $url $QEMU_ROOT
     git clone -b $qemu_branch --single-branch $url $QEMU_ROOT
@@ -696,7 +696,7 @@ set_default_options
 
 parse_args() {
     while [[ "$#" -gt 0 ]]; do
-        case $1 in
+        case "$1" in
             -C|--cmd) cmd_str="$2"; shift ;;
             -T|--topology) TOPO="$2"; shift ;;
             -N|--CPUS) num_cpus="$2"; shift ;;
@@ -744,7 +744,7 @@ else
     source "$default_vars_file"
 fi
 
-parse_args $@
+parse_args "$@"
 
 if [ ! -f $default_vars_file ] && [ "$opt_vars_file" == "" -o ! -f "$opt_vars_file" ] ;then
     error "both default and optional vars file not found, try 
