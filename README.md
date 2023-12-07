@@ -53,6 +53,14 @@ bash cxl-tool.sh --C "commands to execute in vm"
 # VM management
 bash cxl-tool.sh --reset/run/poweroff/shutdown
 
+# create dc region
+bash cxl-tool.sh --create-dcR
+
+# Issue qmp commands through qmp file
+bash cxl-tool.sh --issue-qmp qmp_file
+
+This command can be used for poison injection, dc extent add/release
+
 # print out help information to show all available options
 bash cxl-tool.sh --help
 

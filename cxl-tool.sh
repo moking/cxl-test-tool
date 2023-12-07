@@ -4,8 +4,10 @@ extra_opts=""
 default_vars_file=./.vars.config
 opt_vars_file=""
 image_name=""
+qmp_file=""
 
 top_file=/tmp/topo.txt
+cmd_file=/tmp/cmd
 
 echo '
 rp=13
@@ -143,7 +145,7 @@ run_qemu() {
         -monitor telnet:127.0.0.1:12345,server,nowait \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
         -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
-        $topo" > /tmp/cmd
+        $topo" > $cmd_file
 
     ${QEMU} -s $extra_opts \
         -kernel ${KERNEL_PATH} \
@@ -200,6 +202,42 @@ load_cxl_driver() {
     ssh root@localhost -p $ssh_port "lsmod"
 }
 
+create_cxl_dc_region() {
+    echo_task "Create DC region"
+    cmd_str="rid=0; \
+          region=\$(cat /sys/bus/cxl/devices/decoder0.0/create_dc_region); \
+          echo \$region > /sys/bus/cxl/devices/decoder0.0/create_dc_region; \
+          echo 256 > /sys/bus/cxl/devices/\$region/interleave_granularity; \
+          echo 1 > /sys/bus/cxl/devices/\$region/interleave_ways; \
+          echo dc\$rid >/sys/bus/cxl/devices/decoder2.0/mode; \
+          echo 0x40000000 >/sys/bus/cxl/devices/decoder2.0/dpa_size; \
+          echo 0x40000000 > /sys/bus/cxl/devices/\$region/size; \
+          echo  decoder2.0 > /sys/bus/cxl/devices/\$region/target0; \
+          echo 1 > /sys/bus/cxl/devices/\$region/commit; \
+          echo \$region > /sys/bus/cxl/drivers/cxl_region/bind"
+    ssh root@localhost -p $ssh_port "$cmd_str"
+
+    echo_task "Show dc region"
+    ssh root@localhost -p $ssh_port "cxl list -i"
+}
+
+issue_qmp_cmd() {
+    port=`cat $cmd_file | sed "s/.*qmp/qmp/g" | awk -F'[^0-9]+' '{ print $2 }'`
+    if [ "port" == "" ];then
+        error "qmp port not found, check whether qemu is launched with qmp support"
+        exit 1
+    else
+        echo "qmp port: $port"
+    fi
+    echo_task "Install ncat tool on host"
+    sudo apt-get install ncat
+
+    echo_task "execute qmp commands"
+    cat $qmp_file | ncat localhost $port
+
+    echo_task "execute qmp command completed"
+}
+
 reset_qemu() {
     shutdown_qemu
     sleep 2
@@ -249,6 +287,9 @@ help() {
     --qdb \t\t debug qemu with gdb, may need to launch gdb with -S option
     --kconfig \t\t configure kernel with make menuconfig
     --cxl-mem-setup \t\t set up cxl memory as regular memory and online
+    --load-drv \t\t load cxl drivers
+    --create-dcR \t\t Create DC region before DC extents can be added
+    --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
     -H,--help \t\t display help information
     '
 }
@@ -274,12 +315,14 @@ set_default_options(){
     gen_topo=false
     cmd_str=""
     load_drv=false
+    create_dc_region=false
     kdb=false
     ndb=false
     qdb=false
     opt_nbd="cxl"
     kconfig=false
     cxl_mem_setup=false
+    issue_qmp=false
     test_cxl=false
 }
 
@@ -635,12 +678,14 @@ parse_args() {
             --setup-kernel) setup_kernel=true ;;
             --poweroff|--shutdown) shutdown=true ;;
             --load-drv) load_drv=true ;;
+            --create-dcR) create_dc_region=true;;
             --kdb) kdb=true ;;
             --qdb) qdb=true ;;
             --ndb) ndb=true ; opt_nbd="$2"; shift;;
             -F/--vars-file) opt_vars_file="$2"; shift;;
             --kconfig) kconfig=true;;
             --cxl-mem-setup) cxl_mem_setup=true;;
+            --issue-qmp) issue_qmp=true; qmp_file="$2"; shift;;
             -H|--help) help; exit;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
         esac
@@ -695,6 +740,19 @@ if $create_image && [ -n "$image_name" ];then
     create_qemu_image
 fi
 
+if [ ! -s "$ssh_port" ];then
+    ssh_port="2024"
+fi
+net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
+
+if $issue_qmp; then
+    if [ "$qmp_file" == "" -o ! -f "$qmp_file" ];then
+        error "no qmp input file found, try to create one like qmp-command.example"
+        exit
+    fi
+   issue_qmp_cmd
+fi
+
 
 QEMU=$QEMU_ROOT/build/qemu-system-x86_64
 KERNEL_PATH=$KERNEL_ROOT/arch/x86/boot/bzImage
@@ -706,12 +764,6 @@ else
     echo "Use cxl topology defined..."
     topo=$(get_cxl_topology $TOPO)
 fi
-
-
-if [ ! -s "$port" ];then
-    ssh_port="2024"
-fi
-net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
 
 
 if $run; then
@@ -771,6 +823,10 @@ fi
 
 if $load_drv; then
     load_cxl_driver
+fi
+
+if $create_dc_region; then
+    create_cxl_dc_region
 fi
 
 if $kconfig; then

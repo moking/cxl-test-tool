@@ -1,0 +1,32 @@
+ { "execute": "qmp_capabilities" }
+
+	{ "execute": "cxl-add-dynamic-capacity",
+	  "arguments": {
+		  "path": "/machine/peripheral/cxl-memdev0",
+		  "region-id": 0,
+		  "extents": [
+		  {
+			  "offset": 0,
+			  "len": 128
+		  },
+		  {
+			  "offset": 128,
+			  "len": 256
+		  }
+		  ]
+	  }
+	}
+
+
+ { "execute": "cxl-release-dynamic-capacity",
+	  "arguments": {
+		  "path": "/machine/peripheral/cxl-memdev0",
+		"region-id": 0,
+		  "extents": [
+		  {
+			  "offset": 0,
+			  "len": 128
+		  }
+		  ]
+	  }
+	}
