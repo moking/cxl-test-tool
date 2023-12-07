@@ -224,7 +224,7 @@ help() {
     -A,--accel \t\t acceleration mode: tcg (default)/kvm/...
     -Q,--qemu-root \t Qemu directory
     -K,--kernel \t Linux kernel directory
-    -BK,--build-kernel \t flag to build kernel
+    -BK,--deploy-kernel \t flag to build kernel, install kernel modeles
     -BQ,--build-qemu \t flag to build qemu
     -I,--create \t create qemu image
     --install-ndctl \t flag to install ndctl

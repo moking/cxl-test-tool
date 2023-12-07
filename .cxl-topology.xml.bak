@@ -1,0 +1,13 @@
+<cxl>
+    <host_bridge>
+        <rp>mixed</rp>
+        <rp>
+            <switch>
+                <!--pmem/vmem/mixed/mixed-dcd/dcd-->
+                <dsp id="1">mixed</dsp> 
+            </switch>
+        </rp>
+    </host_bridge>
+    <!--1 fmw for one HB, in order -->
+    <fmw size="4G" ig="8K"> </fmw>
+</cxl>

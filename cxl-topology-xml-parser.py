@@ -67,7 +67,7 @@ def create_cxl_mem(parent_dport, pmem=True, vmem=False, dcd=False):
         vhmem, vhmem_str=create_object("vhmem%s"%mem_id)
         vmem_str= "volatile-memdev=%s,"%(vhmem)
     if dcd:
-        dhmem, dhmem_str=create_object("dhmem%s"%mem_id)
+        dhmem, dhmem_str=create_object("dhmem%s"%mem_id, size="4G")
         dcd_str="nonvolatile-dc-memdev=%s,num-dc-regions=2,"%dhmem
 
     mem_id += 1

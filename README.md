@@ -5,6 +5,10 @@ All the run configuration options are defined in .vars.config. This options will
 Also, all the URLs related to git clone operation is defined there.
 The easiest way to generate the file is to copy run_vars.example and make the change as needed.
 
+* qemu launch command string is stored: /tmp/cmd
+* qemu topology used: /tmp/topo
+* qemu run output: /tmp/qemu.log
+
 ## create qemu image
 bash cxl-tool.sh --create-image --image /tmp/qemu.img
 
