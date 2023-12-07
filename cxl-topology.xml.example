@@ -1,0 +1,24 @@
+<cxl>
+    <host_bridge>
+        <rp>pmem</rp>
+        <rp>vmem</rp>
+        <rp>
+            <switch>
+                <dsp id="0">pmem</dsp> 
+                <dsp id="1">pmem</dsp> 
+                <dsp id="2">vmem</dsp> 
+                <dsp id="3">vmem</dsp> 
+            </switch>
+        </rp>
+        <rp>
+            <switch>
+                <dsp id="0">pmem</dsp> 
+                <dsp id="1">pmem</dsp> 
+                <dsp id="2">vmem</dsp> 
+                <dsp id="3">vmem</dsp> 
+            </switch>
+        </rp>
+    </host_bridge>
+    <!--1 fmw for one HB, in order -->
+    <fmw size="4G" ig="8K"> </fmw>
+</cxl>

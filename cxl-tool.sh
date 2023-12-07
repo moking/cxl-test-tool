@@ -6,7 +6,6 @@ opt_vars_file=""
 image_name=""
 
 top_file=/tmp/topo.txt
-echo "" > $top_file
 
 echo '
 rp=13
@@ -32,97 +31,9 @@ echo_task() {
     echo
 }
 
-get_val() {
-    key=$1
-    val=`cat /tmp/cxl-val | grep -w "$key" | awk -F= '{print $2}'`
-    echo $val
-}
-
-inc() {
-    key=$1
-    line=`cat /tmp/cxl-val | grep -w "$key"`
-    val=`cat /tmp/cxl-val | grep -w "$key" | awk -F= '{print $2}'`
-    val=$(($val+1))
-    newline=$key"="$val
-    sed -i "s/$line/$newline/g" /tmp/cxl-val
-}
-
-create_object() {
-    name=$1
-    size=$2
-    path=$3
-    if [ "$path" == "" -o ! -d $path ];then
-        path=/tmp/
-    fi
-
-        if [ "$size" == "" ];then
-            size="512M"
-    fi
-    echo "-object memory-backend-file,id=$name,share=on,mem-path=$path/$name.raw,size=$size " >> $top_file
-    echo $name
-}
-
-create_cxl_bus() {
-    bus=`get_val "bus"`
-    bus_nr=`get_val "bus_nr"`
-    echo "-device pxb-cxl,bus_nr=$bus_nr,bus=pcie.0,id=cxl.$bus " >> $top_file
-    echo "cxl.$bus"
-    inc "bus"
-    inc "bus_nr"
- }
-
-create_cxl_rp() {
-    rp=`get_val "rp"`
-    slot=`get_val "slot"`
-    chassis=`get_val "chassis"`
-    echo "-device cxl-rp,port=$rp,bus=cxl.1,id=root_port$rp,chassis=$chassis,slot=$slot " >> $top_file
-    echo "root_port$rp"
-    inc "rp"
-    inc "slot"
-}
-
-create_cxl_mem() {
-     port_name=$1
-     mem_id=`get_val "mem_id"`
-     mem=$(create_object "mem$mem_id")
-     lsa=$(create_object "lsa$mem_id")
-     echo "-device cxl-type3,bus=$port_name,memdev=$mem,lsa=$lsa,id=cxl-memdev$mem_id ">>$top_file
-     echo "cxl-memdev$mem_id"
-     inc "mem_id"
-}
-
-create_cxl_fmw() {
-    size=$1
-    bus=$2
-    fmw=`get_val "fmw"`
-    if [ "$size" == "" ];then
-        size="4G"
-    fi
-    if [ "$bus" == "" ];then
-        bus="cxl.1"
-    fi
-    ig="8k"
-    echo "-M cxl-fmw.0.targets.0=$bus,cxl-fmw.$fmw.size=$size,cxl-fmw.$fmw.interleave-granularity=$ig " >> $top_file 
-    echo "cx-fmw.$fmw"
-    inc "fmw"
-}
-
-gen_topology_str() {
-    topo_str=`cat $top_file`
-    topo_str=`echo $topo_str |sed "s/\n/ /g"`
-    echo $topo_str
-}
-
-
 create_topology() {
-    bus1=`create_cxl_bus`
-    rp1=`create_cxl_rp`
-    rp2=`create_cxl_rp`
-    mem=$(create_cxl_mem $rp1)
-    mem2=$(create_cxl_mem $rp2)
-    fmw=$(create_cxl_fmw)
-
-    topo=`gen_topology_str`
+    s=`python cxl-topology-xml-parser.py`
+    echo "$s"
 }
 
 
@@ -232,9 +143,9 @@ run_qemu() {
         -monitor telnet:127.0.0.1:12345,server,nowait \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
         -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
-        $topo 1>&/dev/null" > /tmp/cmd
+        $topo" > /tmp/cmd
 
-    ${QEMU} -s\
+    ${QEMU} -s $extra_opts \
         -kernel ${KERNEL_PATH} \
         -append "${KERNEL_CMD}" \
         -smp $num_cpus \
@@ -343,8 +254,8 @@ help() {
 }
 
 cleanup() {
-    rm -f /tmp/lsa*
-    rm -f /tmp/cxltest*
+    rm -f /tmp/hmem*.raw
+    rm -f /tmp/*lsa*.raw
 }
 
 set_default_options(){
@@ -407,7 +318,6 @@ get_cxl_topology() {
         echo topology \"$1\" not supported, exit;
         exit
     fi
-    echo $topo > /tmp/cxl-top.txt
     echo $topo;
 }
 
@@ -710,7 +620,7 @@ parse_args() {
             --cxl) test_cxl=true ;;
             --image) image_name="$2"; shift ;;
             --install-ndctl) install_ndctl=true ;;
-            --gen-topo) gen_topo=true ;;
+            --create-topo) gen_topo=true ;;
             --ndctl-url) ndctl_url=$2; shift ;;
             --qemu-url) qemu_url=$2; shift ;;
             --kernel-url) kernel_url=$2; shift ;;
@@ -791,11 +701,12 @@ KERNEL_PATH=$KERNEL_ROOT/arch/x86/boot/bzImage
 
 if $gen_topo; then
     echo "Create cxl topology..."
-    create_topology
+    topo=`create_topology`
 else
     echo "Use cxl topology defined..."
     topo=$(get_cxl_topology $TOPO)
 fi
+
 
 if [ ! -s "$port" ];then
     ssh_port="2024"
@@ -819,7 +730,7 @@ if $run; then
         exit 1
     fi
 
-
+    echo $topo >> $top_file
     run_qemu "$topo"
 fi
 if $login; then

@@ -5,7 +5,7 @@ bash cxl-tool.sh --create-image --image /tmp/qemu.img
 
 This will generate qcow2 image that can be used by the following steps
 
-## configure and compile qemu
+## git clone, configure and compile qemu
 bash cxl-tool.sh --setup-qemu
 
 ## build qemu
@@ -19,6 +19,9 @@ bash cxl-tool.sh --deploy-kernel
 
 ## run qemu
 bash cxl-tool.sh --run -A kvm -T m2 
+
+## run qemu with cxl topology generated from .cxl-topology.xml file
+bash cxl-tool.sh --run -A kvm --create-topo
 
 ## Install ndctl, install cxl modules, setup cxl memory
 bash cxl-tool.sh --cxl
