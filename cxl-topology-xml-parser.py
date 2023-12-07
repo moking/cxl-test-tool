@@ -48,6 +48,32 @@ def create_cxl_vmem(parent_dport):
 
     return name, hmem_str+mem_str
 
+def create_cxl_mem(parent_dport, pmem=True, vmem=False, dcd=False):
+    global mem_id
+    prefix= "-device cxl-type3,bus=%s,"%parent_dport
+    lsa, lsa_str=create_object("lsa%s"%mem_id)
+    name = "cxl-memdev%s "%mem_id
+    suffix="id=%s"%name
+    hmem_str=""
+    vhmem_str=""
+    dhmem_str=""
+    pmem_str=""
+    vmem_str=""
+    dcd_str=""
+    if pmem:
+        hmem, hmem_str=create_object("hmem%s"%mem_id)
+        pmem_str= "memdev=%s,lsa=%s,"%(hmem, lsa)
+    if vmem:
+        vhmem, vhmem_str=create_object("vhmem%s"%mem_id)
+        vmem_str= "volatile-memdev=%s,"%(vhmem)
+    if dcd:
+        dhmem, dhmem_str=create_object("dhmem%s"%mem_id)
+        dcd_str="nonvolatile-dc-memdev=%s,num-dc-regions=2,"%dhmem
+
+    mem_id += 1
+    return name, hmem_str+vhmem_str+dhmem_str+lsa_str+prefix+pmem_str+vmem_str+dcd_str+suffix
+
+
 def create_cxl_switch(parent_dport, num_dsp=2):
     global us_port
     up_name="us%s"%us_port
@@ -96,6 +122,15 @@ def parse_topo(root, p="", s=""):
             if root.text =="vmem":
                 name, rs = create_cxl_vmem(name)
                 s += rs
+            if root.text == "mixed":
+                name, rs = create_cxl_mem(name, pmem=True, vmem=True)
+                s += rs
+            if root.text == "mixed-dcd":
+                name, rs = create_cxl_mem(name, pmem=True, vmem=True, dcd=True)
+                s += rs
+            if root.text == "dcd":
+                name, rs = create_cxl_mem(name, pmem=False, vmem=False, dcd=True)
+                s += rs
         elif root.tag == "switch":
             name, rs = create_cxl_switch(p)
             s += rs
@@ -108,6 +143,15 @@ def parse_topo(root, p="", s=""):
                 s += rs
             if root.text == "vmem":
                 name, rs = create_cxl_vmem(name)
+                s += rs
+            if root.text == "mixed":
+                name, rs = create_cxl_mem(name, pmem=True, vmem=True)
+                s += rs
+            if root.text == "mixed-dcd":
+                name, rs = create_cxl_mem(name, pmem=True, vmem=True, dcd=True)
+                s += rs
+            if root.text == "dcd":
+                name, rs = create_cxl_mem(name, pmem=False, vmem=False, dcd=True)
                 s += rs
         elif root.tag == "fmw":
             size = root.attrib.get("size", "4G")
