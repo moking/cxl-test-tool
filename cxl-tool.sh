@@ -228,7 +228,7 @@ help() {
     -BQ,--build-qemu \t flag to build qemu
     -I,--create \t create qemu image
     --install-ndctl \t flag to install ndctl
-    --gen-topo \t\t flag to generate topology
+    --create-topo \t\t flag to generate topology
     --ndctl-url \t url to git clone ndctl
     --qemu-url \t\t url to git clone ndctl
     --kernel-url \t url to git clone ndctl
