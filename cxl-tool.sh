@@ -791,6 +791,7 @@ fi
 
 if $shutdown; then
     shutdown_qemu
+    cleanup
 fi
 
 if $reset; then
@@ -837,4 +838,3 @@ if $cxl_mem_setup; then
     setup_cxl_memory
 fi
 
-cleanup
