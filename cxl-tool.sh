@@ -117,6 +117,7 @@ run_qemu() {
     if [ "$1" != "" ];then
         topo="$1"
     fi
+    cleanup
 
     echo "QEMU=$QEMU" > $run_opts_file
     echo "KERNEL_PATH=$KERNEL_PATH" >> $run_opts_file
@@ -124,6 +125,7 @@ run_qemu() {
     echo "net_config=\"$net_config\"" >> $run_opts_file
     echo "topo=\"$topo\"" >> $run_opts_file
     echo "QEMU_IMG=$QEMU_IMG" >> $run_opts_file
+    echo "accel_mode=$accel_mode" >> $run_opts_file
     echo "***: Start running Qemu..."
 
     format=raw
@@ -297,6 +299,7 @@ help() {
 cleanup() {
     rm -f /tmp/hmem*.raw
     rm -f /tmp/*lsa*.raw
+    rm -f /tmp/cxltest*.raw
 }
 
 set_default_options(){
@@ -324,6 +327,7 @@ set_default_options(){
     cxl_mem_setup=false
     issue_qmp=false
     test_cxl=false
+    print_dmesg=false
 }
 
 display_options() {
@@ -421,6 +425,10 @@ kernel_deploy() {
     build_source_code $KERNEL_ROOT
     sudo make modules_install
     echo_task "build kernel and install modules--done"
+}
+
+display_dmesg() {
+    ssh root@localhost -p $ssh_port "dmesg | grep cxl | grep -v Doorbell | grep -v 0x4102"
 }
 
 create_qemu_image() {
@@ -669,6 +677,7 @@ parse_args() {
             --kernel-url) kernel_url=$2; shift ;;
             --ndctl-branch) ndctl_branch=$2; shift ;;
             --qemu-branch) qemu_branch=$2; shift ;;
+            --dmesg-cxl) print_dmesg=true ;;
             --kernel-branch) kernel_branch=$2; shift ;;
             -P|--port) ssh_port="$2"; shift ;;
             -L|--login) login=true ;;
@@ -753,6 +762,9 @@ if $issue_qmp; then
    issue_qmp_cmd
 fi
 
+if $print_dmesg; then 
+    display_dmesg
+fi
 
 QEMU=$QEMU_ROOT/build/qemu-system-x86_64
 KERNEL_PATH=$KERNEL_ROOT/arch/x86/boot/bzImage
@@ -782,7 +794,10 @@ if $run; then
         exit 1
     fi
 
-    echo $topo >> $top_file
+    echo "***" >> $top_file
+    echo $topo | sed "s/ /\n/g" >> $top_file
+    echo "***" >> $top_file
+
     run_qemu "$topo"
 fi
 if $login; then

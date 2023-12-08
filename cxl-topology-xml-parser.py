@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import os
+import argparse
 
 rp=13
 mem_id=0
@@ -10,15 +11,18 @@ bus_nr=12
 fmw=0
 us_port=0
 ds_port=0
+num_hb_found=0
 
 def create_object(name, size="512M", path="/tmp"):
     return name, "-object memory-backend-file,id=%s,share=on,mem-path=%s/%s.raw,size=%s "%(name,path,name,size)
 
 def create_cxl_bus():
     global bus, bus_nr
+    name = "cxl.%s"%bus
+    rs = "-device pxb-cxl,bus_nr=%s,bus=pcie.0,id=%s "%(bus_nr, name)
     bus = bus + 1
-    bus_nr += 1
-    return "cxl.%s"%(bus-1), "-device pxb-cxl,bus_nr=%s,bus=pcie.0,id=cxl.%s "%(bus_nr-1, bus-1)
+    bus_nr += 100
+    return name, rs
 
 def create_cxl_rp(bus="cxl.1"):
     global rp, slot, chassis
@@ -96,25 +100,30 @@ def create_cxl_dsp(parent_dport, dsid):
     slot += 1
     return ds_name, rs
 
-def create_fmw(size="4G", ig="8K"):
+def create_fmw(size="4G", ig="8k"):
     global fmw
-    bus="cxl.%s"%(fmw+1)
     name="cxl-fmw.%s"%fmw
+    bus_str=""
+    for i in range(num_hb_found):
+        bus = "cxl.%s"%(i+1)
+        bus_str+="%s.targets.%s=%s,"%(name, i, bus)
 
-    rs = "-M %s.targets.0=%s,%s.size=%s,%s.interleave-granularity=%s " \
-            %(name, bus, name, size, name, ig)
+    rs = "-M %s%s.size=%s,%s.interleave-granularity=%s " \
+            %(bus_str, name, size, name, ig)
     fmw += 1
     return name,rs
 
 # s: include the all string for qemu arguemnts
 def parse_topo(root, p="", s=""):
+    global num_hb_found
     name=""
     if root.tag == "host_bridge":
         name,rs=create_cxl_bus()
+        num_hb_found += 1
         s += rs
     else:
         if root.tag == "rp":
-            name, rs = create_cxl_rp()
+            name, rs = create_cxl_rp(p)
             s += rs
             if root.text =="pmem":
                 name, rs = create_cxl_pmem(name)
@@ -164,7 +173,11 @@ def parse_topo(root, p="", s=""):
         s = parse_topo(child, name, s)
     return s
 
-top_xml=".cxl-topology.xml"
+parser = argparse.ArgumentParser(description='A tool to generate qemu command line arguments for cxl topology from xml file')
+parser.add_argument('-F','--file', help='path to xml file', required=False, default='.cxl-topology.xml')
+args = vars(parser.parse_args())
+
+top_xml=args["file"]
 if not os.path.exists(top_xml):
     print("Error: topology xml: %s not found, create one by copy cxl-topology.xml.example"%top_xml)
     exit(1)

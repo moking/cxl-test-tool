@@ -20,6 +20,7 @@
             </switch>
         </rp>
     </host_bridge>
-    <!--1 fmw for one HB, in order -->
+    <!--fmw definition must after all host bridge-->
+    <!--one fmw includes all cxl HB-->
     <fmw size="4G" ig="8K"> </fmw>
 </cxl>
