@@ -165,7 +165,11 @@ run_qemu() {
         -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
         $topo 1>&/tmp/qemu.log &
 
-    sleep 2
+    if [ "$accel_mode" == "kvm" ];then
+        sleep 2
+    else
+        sleep 5
+    fi
     running=`ps -ef | grep qemu-system-x86_64 | grep -c raw`
     if [ $running -gt 0 ];then
         echo "QEMU:running" > /tmp/qemu-status
