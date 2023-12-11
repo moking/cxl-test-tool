@@ -29,6 +29,7 @@ error() {
 }
 
 echo_task() {
+    echo
     echo "** Task: $@ **"
     echo
 }
@@ -208,6 +209,21 @@ load_cxl_driver() {
     ssh root@localhost -p $ssh_port "lsmod"
 }
 
+unload_cxl_driver() {
+    echo_task "uninstall cxl modules"
+
+    echo "remove cxl drivers" 
+    ssh root@localhost -p $ssh_port "rmmod -f cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core"
+    echo "remove nd_pmem" 
+    ssh root@localhost -p $ssh_port "rmmod -f nd_pmem"
+    echo "remove dax related drivers"
+    ssh root@localhost -p $ssh_port "rmmod -f device_dax dax nd_btt libnvdimm"
+
+    echo
+    ssh root@localhost -p $ssh_port "lsmod"
+}
+
+
 create_cxl_dc_region() {
     echo_task "Create DC region"
     cmd_str="rid=0; \
@@ -279,6 +295,7 @@ help() {
     --ndctl-branch \t ndctl branch
     --qemu-branch \t qemu branch
     --load-drv \t\t load cxl driver
+    --unload-drv \t\t unload cxl driver
     --setup-qemu \t git clone, configure, make and install qemu
     --setup-kernel \t git clone, configure, make and install kernel
     --kernel-branch \t kernel branch
@@ -293,8 +310,10 @@ help() {
     --qdb \t\t debug qemu with gdb, may need to launch gdb with -S option
     --kconfig \t\t configure kernel with make menuconfig
     --cxl-mem-setup \t\t set up cxl memory as regular memory and online
-    --load-drv \t\t load cxl drivers
     --create-dcR \t\t Create DC region before DC extents can be added
+    --create-region \t\t Create a regular region for mem0
+    --disable-region \t\t disable a region (region0 by default)
+    --destroy-region \t\t destroy a region (region0 by default)
     --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
     -H,--help \t\t display help information
     '
@@ -322,6 +341,7 @@ set_default_options(){
     gen_topo=false
     cmd_str=""
     load_drv=false
+    unload_drv=false
     create_dc_region=false
     kdb=false
     ndb=false
@@ -329,6 +349,9 @@ set_default_options(){
     opt_nbd="cxl"
     kconfig=false
     cxl_mem_setup=false
+    region_create=false
+    region_destroy=false
+    region_disable=false
     issue_qmp=false
     test_cxl=false
     print_dmesg=false
@@ -395,6 +418,40 @@ configure_kernel() {
     echo_task "Configure kernel"
     cd $KERNEL_ROOT
     make menuconfig
+}
+
+create_cxl_region() {
+    load_cxl_driver
+
+    echo_task "Show cxl device: cxl list -iu"
+    ssh root@localhost -p $ssh_port "cxl list -iu"
+
+    echo 
+    echo "create region"
+    ssh root@localhost -p $ssh_port "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M --debug"
+
+    echo_task "Show cxl device: cxl list -iu"
+    ssh root@localhost -p $ssh_port "cxl list -iu"
+}
+
+destroy_cxl_region() {
+    region="region0"
+    if [ "$1" != "" ];then
+        region=$1
+    fi
+    ssh root@localhost -p $ssh_port "cxl destroy-region $region -f"
+    echo_task "Show cxl device: cxl list -iu"
+    ssh root@localhost -p $ssh_port "cxl list -iu"
+}
+
+disable_cxl_region() {
+    region="region0"
+    if [ "$1" != "" ];then
+        region=$1
+    fi
+    ssh root@localhost -p $ssh_port "cxl disable-region $region -f"
+    echo_task "Show cxl device: cxl list -iu"
+    ssh root@localhost -p $ssh_port "cxl list -iu"
 }
 
 setup_cxl_memory() {
@@ -691,6 +748,7 @@ parse_args() {
             --setup-kernel) setup_kernel=true ;;
             --poweroff|--shutdown) shutdown=true ;;
             --load-drv) load_drv=true ;;
+            --unload-drv) unload_drv=true ;;
             --create-dcR) create_dc_region=true;;
             --kdb) kdb=true ;;
             --qdb) qdb=true ;;
@@ -698,6 +756,9 @@ parse_args() {
             -F/--vars-file) opt_vars_file="$2"; shift;;
             --kconfig) kconfig=true;;
             --cxl-mem-setup) cxl_mem_setup=true;;
+            --create-region) region_create=true;;
+            --destroy-region) region_destroy=true;;
+            --disable-region) region_disable=true;;
             --issue-qmp) issue_qmp=true; qmp_file="$2"; shift;;
             -H|--help) help; exit;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
@@ -845,6 +906,10 @@ if $load_drv; then
     load_cxl_driver
 fi
 
+if $unload_drv; then
+    unload_cxl_driver
+fi
+
 if $create_dc_region; then
     create_cxl_dc_region
 fi
@@ -855,5 +920,17 @@ fi
 
 if $cxl_mem_setup; then
     setup_cxl_memory
+fi
+
+if $region_create; then
+    create_cxl_region;
+fi
+
+if $region_disable; then
+    disable_cxl_region
+fi
+
+if $region_destroy; then
+    destroy_cxl_region
 fi
 
