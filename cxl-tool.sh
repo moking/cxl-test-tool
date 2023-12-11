@@ -273,49 +273,50 @@ reset_qemu() {
 help() {
     echo "Usage: $0 [OPTION]..."
     echo -e ' OPTION:
-    -C,--cmd  \t\t shell command series to execute on the VM
-    -T,--topology  \t CXL topology to use for qemu emulation:
-        sw: \t with a switch
-        rp1: \t with only one root port
-        hb2: \t with two home bridges
-        m2: \t with two memdev and 1 HB
-    -N,--CPUS \t\t number of CPUs created for the VM
-    -E,--extra-opts \t extra options to pass to qemu when launching
-    -A,--accel \t\t acceleration mode: tcg (default)/kvm/...
-    -Q,--qemu-root \t Qemu directory
-    -K,--kernel \t Linux kernel directory
-    -BK,--deploy-kernel \t flag to build kernel, install kernel modeles
-    -BQ,--build-qemu \t flag to build qemu
-    -I,--create \t create qemu image
-    --install-ndctl \t flag to install ndctl
+    -C,--cmd  \t\t\t shell command series to execute on the VM
+    -T,--topology  \t\t predefined CXL topology to use for qemu emulation:
+        sw: \t\t with a switch
+        rp1: \t\t with only one root port
+        hb2: \t\t with two home bridges
+        m2: \t\t with two memdev and 1 HB
     --create-topo \t\t flag to generate topology
-    --ndctl-url \t url to git clone ndctl
-    --qemu-url \t\t url to git clone ndctl
-    --kernel-url \t url to git clone ndctl
-    --ndctl-branch \t ndctl branch
-    --qemu-branch \t qemu branch
-    --load-drv \t\t load cxl driver
-    --unload-drv \t\t unload cxl driver
-    --setup-qemu \t git clone, configure, make and install qemu
-    --setup-kernel \t git clone, configure, make and install kernel
-    --kernel-branch \t kernel branch
-    -P,--port \t\t port to ssh to VM
-    -L,--login \t\t login the VM
-    -R,--run \t\t start qemu
-    --reset \t\t reset the VM instance
-    --poweroff \t\t shutdown the VM instance
-    --shutdown \t\t shutdown the VM instance
-    --kdb \t\t debug kernel with gdb
-    --ndb \t\t debug ndctl inside VM with gdb, followed with cxl operations
-    --qdb \t\t debug qemu with gdb, may need to launch gdb with -S option
-    --kconfig \t\t configure kernel with make menuconfig
+    -N,--CPUS \t\t\t number of CPUs created for the VM
+    -E,--extra-opts \t\t extra options to pass to qemu when launching
+    -A,--accel \t\t\t acceleration mode: tcg (default)/kvm/...
+    -Q,--qemu-root \t\t Qemu directory
+    -K,--kernel \t\t Linux kernel directory
+    -BK,--deploy-kernel \t\t flag to build kernel, install kernel modeles
+    -BQ,--build-qemu \t\t flag to build qemu
+    -I,--create \t\t create qemu image
+    --install-ndctl \t\t flag to install ndctl
+    --ndctl-url \t\t url to git clone ndctl
+    --qemu-url \t\t\t url to git clone ndctl
+    --kernel-url \t\t url to git clone ndctl
+    --ndctl-branch \t\t ndctl branch
+    --qemu-branch \t\t qemu branch
+    --load-drv \t\t\t load cxl driver
+    --unload-drv \t\t\t unload cxl driver
+    --setup-qemu \t\t git clone, configure, make and install qemu
+    --setup-kernel \t\t git clone, configure, make and install kernel
+    --kernel-branch \t\t kernel branch
+    -P,--port \t\t\t port to ssh to VM
+    -L,--login \t\t\t login the VM
+    -R,--run \t\t\t start qemu
+    --reset \t\t\t reset the VM instance
+    --poweroff \t\t\t shutdown the VM instance
+    --shutdown \t\t\t shutdown the VM instance
+    --kdb \t\t\t debug kernel with gdb
+    --ndb \t\t\t debug ndctl inside VM with gdb, followed with cxl operations
+    --qdb \t\t\t debug qemu with gdb, may need to launch gdb with -S option
+    --kconfig \t\t\t configure kernel with make menuconfig
     --cxl-mem-setup \t\t set up cxl memory as regular memory and online
     --create-dcR \t\t Create DC region before DC extents can be added
     --create-region \t\t Create a regular region for mem0
+    --create-ram-region \t Create a regular ram region for volatile memory mem0
     --disable-region \t\t disable a region (region0 by default)
     --destroy-region \t\t destroy a region (region0 by default)
     --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
-    -H,--help \t\t display help information
+    -H,--help \t\t\t display help information
     '
 }
 
@@ -350,6 +351,7 @@ set_default_options(){
     kconfig=false
     cxl_mem_setup=false
     region_create=false
+    ram_region_create=false
     region_destroy=false
     region_disable=false
     issue_qmp=false
@@ -421,6 +423,11 @@ configure_kernel() {
 }
 
 create_cxl_region() {
+    if [ "$1" == "" ];then
+        mode="pmem"
+    else
+        mode=$1
+    fi
     load_cxl_driver
 
     echo_task "Show cxl device: cxl list -iu"
@@ -428,10 +435,13 @@ create_cxl_region() {
 
     echo 
     echo "create region"
-    ssh root@localhost -p $ssh_port "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M --debug"
+    ssh root@localhost -p $ssh_port "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M -t $mode"
 
     echo_task "Show cxl device: cxl list -iu"
     ssh root@localhost -p $ssh_port "cxl list -iu"
+    if [ "$mode" == "ram" ];then
+        ssh root@localhost -p $ssh_port "lsmem"
+    fi
 }
 
 destroy_cxl_region() {
@@ -757,6 +767,7 @@ parse_args() {
             --kconfig) kconfig=true;;
             --cxl-mem-setup) cxl_mem_setup=true;;
             --create-region) region_create=true;;
+            --create-ram-region) ram_region_create=true;;
             --destroy-region) region_destroy=true;;
             --disable-region) region_disable=true;;
             --issue-qmp) issue_qmp=true; qmp_file="$2"; shift;;
@@ -924,6 +935,10 @@ fi
 
 if $region_create; then
     create_cxl_region;
+fi
+
+if $ram_region_create; then
+    create_cxl_region "ram"
 fi
 
 if $region_disable; then
