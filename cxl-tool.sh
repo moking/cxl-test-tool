@@ -34,6 +34,12 @@ echo_task() {
     echo
 }
 
+print_key_value() {
+    key=$1
+    value=$2
+    echo -e "$key \t\t\t $value"
+}
+
 create_topology() {
     s=`python cxl-topology-xml-parser.py`
     echo "$s"
@@ -360,24 +366,29 @@ set_default_options(){
 }
 
 display_options() {
+    echo_task Run $0 with options:
     echo "***************************"
-    echo Run $0 with options:
-    echo " mode $accel_mode"
-    echo " num_cpus $num_cpus"
-    echo " topology $TOPO"
-    echo " build_qemu $build_qemu "
-    echo " deploy_kernel $deploy_kernel"
-    echo " KERNEL_ROOT $KERNEL_ROOT"
-    echo " QEMU_ROOT $QEMU_ROOT"
-    echo " QEMU_IMG $QEMU_IMG "
-    echo " create_image $create_image "
-    echo " run $run "
-    echo " shutdown $shutdown "
-    echo " reset $reset "
-    echo " install_ndctl $install_ndctl "
-    echo " generate topology $gen_topo "
+    print_key_value "KERNEL_ROOT" "$KERNEL_ROOT"
+    print_key_value "QEMU_ROOT" "$QEMU_ROOT"
+    print_key_value "QEMU_IMG" "$QEMU_IMG "
+    print_key_value
+    print_key_value "Other variables: "
+    print_key_value " mode\t" "$accel_mode"
+    print_key_value " num_cpus" "$num_cpus"
+    print_key_value " Topology" "$TOPO if no create-topo"
+    print_key_value " build_qemu" "$build_qemu "
+    print_key_value " deploy_kernel" "$deploy_kernel"
+    print_key_value " create_image" "$create_image "
+    print_key_value " run\t" "$run "
+    print_key_value " shutdown" "$shutdown "
+    print_key_value " reset\t" "$reset "
+    print_key_value " install_ndctl" "$install_ndctl "
+    print_key_value " create-topo" "$gen_topo "
 
+    echo
+    echo "run $0 -H for more options available."
     echo "***************************"
+    echo
 }
 
 get_cxl_topology() {
@@ -802,6 +813,11 @@ if [ -n "$image_name" ];then
     QEMU_IMG=$image_name
 fi
 
+if [ ! -s "$ssh_port" ];then
+    ssh_port="2024"
+fi
+net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
+
 display_options
 
 if $build_qemu; then
@@ -825,11 +841,6 @@ if $create_image && [ -n "$image_name" ];then
     create_qemu_image
 fi
 
-if [ ! -s "$ssh_port" ];then
-    ssh_port="2024"
-fi
-net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
-
 if $issue_qmp; then
     if [ "$qmp_file" == "" -o ! -f "$qmp_file" ];then
         error "no qmp input file found, try to create one like qmp-command.example"
@@ -845,16 +856,16 @@ fi
 QEMU=$QEMU_ROOT/build/qemu-system-x86_64
 KERNEL_PATH=$KERNEL_ROOT/arch/x86/boot/bzImage
 
-if $gen_topo; then
-    echo "Create cxl topology..."
-    topo=`create_topology`
-else
-    echo "Use cxl topology defined..."
-    topo=$(get_cxl_topology $TOPO)
-fi
-
 
 if $run; then
+    if $gen_topo; then
+        echo "Using cxl topology created from xml ..."
+        topo=`create_topology`
+    else
+        echo "Using predefined cxl topology: $TOPO ..."
+        topo=$(get_cxl_topology $TOPO)
+    fi
+
     if  [ ! -f "$QEMU" ];then
         error "Qemu binary not found!"
         exit 1
