@@ -1,2 +1,4 @@
 .vars.config
 .cxl-topology.xml
+*.swp
+*~

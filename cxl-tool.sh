@@ -184,6 +184,8 @@ run_qemu() {
         sleep 2
     else
         echo "Qemu: start Fail!"
+		echo "Check /tmp/qemu.log for more information"
+		exit 1
     fi
 }
 
@@ -525,7 +527,15 @@ create_qemu_image() {
     echo_task "Create qemu image: $image_name"
     IMG=$image_name
     DIR=/tmp/img_dir
-    qemu-img create $IMG 16g
+
+	if [ ! -d `dirname $IMG` ];then
+		mkdir -p `dirname $IMG`
+		if [ "$?" != "0" ];then
+			echo "Create image directory failed, exit..."
+			exit 1
+		fi
+	fi
+	qemu-img create $IMG 16g
     sudo mkfs.ext4 $IMG
     mkdir $DIR
     echo_task "mount -o loop $IMG $DIR"
@@ -570,7 +580,7 @@ mount -t 9p -o trans=virtio modshare /lib/modules
     qemu-img convert -O qcow2 $IMG /tmp/qemu-image.qcow2
     rmdir $DIR
 
-    ssh-keygen -f "/home/fan/.ssh/known_hosts" -R "[localhost]:2024"
+    ssh-keygen -f "~/.ssh/known_hosts" -R "[localhost]:2024"
     echo_task "qemu image: $IMG created!"
     exit
 }
@@ -594,12 +604,14 @@ qemu_setup() {
     echo git clone -b $qemu_branch --single-branch $url $QEMU_ROOT
     git clone -b $qemu_branch --single-branch $url $QEMU_ROOT
     echo
+	cur_dir=`pwd`
     cd $QEMU_ROOT
     echo ./configure --target-list=x86_64-softmmu --enable-debug
     ./configure --target-list=x86_64-softmmu --enable-debug
     echo
     echo "make -j8"
     make -j8
+	cd $cur_dir
 }
 
 kernel_setup() {
@@ -665,6 +677,8 @@ kernel_setup() {
 
     echo_task "Install kernel modules"
     sudo make modules_install
+
+	cd $cur_dir
     
     echo_task "$0 completed."
 }
@@ -809,8 +823,9 @@ if [ "$opt_vars_file" != "" -o -f "$opt_vars_file" ] ;then
     source $opt_vars_file
 fi
 
-if [ -n "$image_name" ];then
-    QEMU_IMG=$image_name
+if [ ! -n "$image_name" ];then
+	echo "image_name is not given with --image option, use QEMU_IMG ($QEMU_IMG)"
+	image_name=$QEMU_IMG
 fi
 
 if [ ! -s "$ssh_port" ];then
@@ -837,8 +852,10 @@ if $setup_kernel; then
     kernel_setup
 fi
 
-if $create_image && [ -n "$image_name" ];then
-    create_qemu_image
+if $create_image; then
+	if [ -n "$image_name" ];then
+		create_qemu_image
+	fi
 fi
 
 if $issue_qmp; then
