@@ -33,9 +33,9 @@ def create_cxl_rp(bus="cxl.1"):
     slot += 1
     return name, rs
 
-def create_cxl_pmem(parent_dport):
+def create_cxl_pmem(parent_dport, size="512M"):
     global mem_id
-    hmem, hmem_str=create_object("hmem%s"%mem_id)
+    hmem, hmem_str=create_object("hmem%s"%mem_id, size=size)
     lsa, lsa_str=create_object("lsa%s"%mem_id)
     name = "cxl-memdev%s"%mem_id
     mem_str= "-device cxl-type3,bus=%s,memdev=%s,lsa=%s,id=cxl-memdev%s "%(parent_dport, hmem, lsa, mem_id)
@@ -43,9 +43,9 @@ def create_cxl_pmem(parent_dport):
 
     return name, hmem_str+lsa_str+mem_str
 
-def create_cxl_vmem(parent_dport):
+def create_cxl_vmem(parent_dport, size="512M"):
     global mem_id
-    hmem, hmem_str=create_object("hmem%s"%mem_id)
+    hmem, hmem_str=create_object("hmem%s"%mem_id, size=size)
     name = "cxl-memdev%s"%mem_id
     mem_str= "-device cxl-type3,bus=%s,volatile-memdev=%s,id=cxl-vmemdev%s "%(parent_dport, hmem, mem_id)
     mem_id += 1
@@ -123,13 +123,16 @@ def parse_topo(root, p="", s=""):
         s += rs
     else:
         if root.tag == "rp":
+            size="512M"
+            if root.attrib.get("size"):
+                size = root.attrib["size"]
             name, rs = create_cxl_rp(p)
             s += rs
             if root.text =="pmem":
-                name, rs = create_cxl_pmem(name)
+                name, rs = create_cxl_pmem(name, size)
                 s += rs
             if root.text =="vmem":
-                name, rs = create_cxl_vmem(name)
+                name, rs = create_cxl_vmem(name, size)
                 s += rs
             if root.text == "mixed":
                 name, rs = create_cxl_mem(name, pmem=True, vmem=True)
@@ -145,13 +148,16 @@ def parse_topo(root, p="", s=""):
             s += rs
         elif root.tag == "dsp":
             dsid=root.attrib["id"]
+            size="512M"
+            if root.attrib.get("size"):
+                size = root.attrib["size"]
             name, rs = create_cxl_dsp(p, dsid)
             s += rs
             if root.text == "pmem":
-                name, rs = create_cxl_pmem(name)
+                name, rs = create_cxl_pmem(name, size)
                 s += rs
             if root.text == "vmem":
-                name, rs = create_cxl_vmem(name)
+                name, rs = create_cxl_vmem(name, size)
                 s += rs
             if root.text == "mixed":
                 name, rs = create_cxl_mem(name, pmem=True, vmem=True)
