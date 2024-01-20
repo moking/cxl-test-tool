@@ -660,18 +660,40 @@ kernel_setup() {
         fi
     fi
 
-    echo_task "Configure the kernel..."
-    echo -n "Configure mannually (1) or copy the example config (2): "
-    read choice
+	if [ -f ".config" ];then
+		echo -n "Found .config under $KERNEL_ROOT, use it for kernel configuration (Y/N): "
+		read choice
+		if [ "$choice" == "Y" ]; then
+			echo_task "Configure kernel with existing config file"
+		elif [ "$choice" == "N" ]; then
+			echo_task "Configure the kernel..."
+			echo -n "Configure mannually (1) or copy the example config (2): "
+			read choice
 
-    if [ "$choice" == "1" ]; then
-        make menuconfig
-    else
-        echo "Copy the example config as .config"
-        cp $cur_dir/kconfig.example $KERNEL_ROOT/.config
-    fi
+			if [ "$choice" == "1" ]; then
+				make menuconfig
+			else
+				echo "Copy the example config as .config"
+				cp $cur_dir/kconfig.example $KERNEL_ROOT/.config
+			fi
+		else
+			echo "Unknown choice"
+			exit 1
+		fi
+	else
+		echo_task "Configure the kernel..."
+		echo -n "Configure mannually (1) or copy the example config (2): "
+		read choice
 
-    echo_task "Compile the kernel in $KERNEL_ROOT"
+		if [ "$choice" == "1" ]; then
+			make menuconfig
+		else
+			echo "Copy the example config as .config"
+			cp $cur_dir/kconfig.example $KERNEL_ROOT/.config
+		fi
+	fi
+
+	echo_task "Compile the kernel in $KERNEL_ROOT"
     cd $KERNEL_ROOT
     make -j 16
 
