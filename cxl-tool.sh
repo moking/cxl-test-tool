@@ -355,7 +355,7 @@ set_default_options(){
     kdb=false
     ndb=false
     qdb=false
-    opt_nbd="cxl"
+    opt_nbd="cxl/cxl"
     kconfig=false
     cxl_mem_setup=false
     region_create=false
@@ -718,8 +718,8 @@ gdb_qemu() {
 
 gdb_ndctl() {
     opt=$1
-    echo ssh root@localhost -p $ssh_port "cd ndctl; gdb --args build/cxl/$opt"
-    ssh root@localhost -p $ssh_port "cd ndctl; gdb --args build/cxl/$opt"
+    echo ssh root@localhost -p $ssh_port "cd ndctl; gdb --args build/$opt"
+    ssh root@localhost -p $ssh_port "cd ndctl; gdb --args build/$opt"
 }
 
 setup_ndctl() {
