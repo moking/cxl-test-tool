@@ -140,7 +140,13 @@ run_qemu() {
         format="qcow2"
     fi
 
-    echo "${QEMU} -s $extra_opts \
+    if $monitor_wait; then
+        wait_flag="wait"
+    else
+        wait_flag="nowait"
+    fi
+
+    echo "${QEMU} -s \
         -kernel ${KERNEL_PATH} \
         -append \"${KERNEL_CMD}\" \
         -smp $num_cpus \
@@ -151,7 +157,8 @@ run_qemu() {
         ${net_config} \
         -drive file=${QEMU_IMG},index=0,media=disk,format=$format \
         -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 \
-        -monitor telnet:127.0.0.1:12345,server,nowait \
+        -monitor telnet:127.0.0.1:12345,server,$wait_flag \
+        $extra_opts \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
         -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
         $topo" > $cmd_file
@@ -165,7 +172,7 @@ run_qemu() {
         -nographic \
         ${SHARED_CFG} \
         ${net_config} \
-        -monitor telnet:127.0.0.1:12345,server,nowait \
+        -monitor telnet:127.0.0.1:12345,server,$wait_flag \
         -drive file=${QEMU_IMG},index=0,media=disk,format=$format \
         -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
@@ -365,6 +372,7 @@ set_default_options(){
     issue_qmp=false
     test_cxl=false
     print_dmesg=false
+    monitor_wait=false
 }
 
 display_options() {
@@ -386,6 +394,7 @@ display_options() {
     print_key_value " reset\t" "$reset "
     print_key_value " install_ndctl" "$install_ndctl "
     print_key_value " create-topo" "$gen_topo "
+    print_key_value " monitor_wait" "$monitor_wait "
 
     echo
     echo "run $0 -H for more options available."
@@ -785,6 +794,7 @@ parse_args() {
             -K|--kernel_root) KERNEL_ROOT="$2"; shift ;;
             -BK|--deploy-kernel) deploy_kernel=true ;;
             -BQ|--build-qemu) build_qemu=true ;;
+            -MW|--monitor-wait) monitor_wait=true;;
             --create-image) create_image=true ;;
             --cxl) test_cxl=true ;;
             --image) image_name="$2"; shift ;;
