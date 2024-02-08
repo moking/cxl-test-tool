@@ -240,6 +240,11 @@ unload_cxl_driver() {
 
 
 create_cxl_dc_region() {
+    mod_loaded=`ssh root@localhost -p $ssh_port "lsmod | grep -c cxl_mem"`
+    if [ "$mod_loaded" == "0" ];then
+        load_cxl_driver
+    fi
+
     echo_task "Create DC region"
     cmd_str="rid=0; \
           region=\$(cat /sys/bus/cxl/devices/decoder0.0/create_dc_region); \
@@ -255,7 +260,7 @@ create_cxl_dc_region() {
     ssh root@localhost -p $ssh_port "$cmd_str"
 
     echo_task "Show dc region"
-    ssh root@localhost -p $ssh_port "cxl list -i"
+    ssh root@localhost -p $ssh_port "cxl list -iu"
 }
 
 issue_qmp_cmd() {
