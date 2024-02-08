@@ -61,7 +61,7 @@ RP1_DCD="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.
      -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1 \
      -device cxl-rp,port=0,bus=cxl.1,id=root_port13,chassis=0,slot=2 \
      -device cxl-rp,port=1,bus=cxl.1,id=root_port14,chassis=0,slot=3 \
-     -device cxl-type3,bus=root_port13,memdev=cxl-mem1,lsa=cxl-lsa1,nonvolatile-dc-memdev=cxl-dcd0,volatile-memdev=cxl-mem2,id=cxl-dcd0,num-dc-regions=2\
+     -device cxl-type3,bus=root_port13,memdev=cxl-mem1,lsa=cxl-lsa1,volatile-dc-memdev=cxl-dcd0,volatile-memdev=cxl-mem2,id=cxl-dcd0,num-dc-regions=2\
      -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=8k"
 
 M2="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,size=512M \
