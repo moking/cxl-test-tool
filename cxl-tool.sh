@@ -825,7 +825,7 @@ parse_args() {
             --kdb) kdb=true ;;
             --qdb) qdb=true ;;
             --ndb) ndb=true ; opt_nbd="$2"; shift;;
-            -F/--vars-file) opt_vars_file="$2"; shift;;
+            -F|--vars-file) opt_vars_file="$2"; shift;;
             --kconfig) kconfig=true;;
             --cxl-mem-setup) cxl_mem_setup=true;;
             --create-region) region_create=true;;
