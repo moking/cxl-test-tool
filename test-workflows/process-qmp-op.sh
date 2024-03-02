@@ -50,19 +50,23 @@ print='
 
 	{ "execute": "cxl-display-accepted-dc-extents",
 	  "arguments": {
-		  "path": "/machine/peripheral/cxl-memdev0"
+		  "path": "/machine/peripheral/cxl-memdev0",
+          "output": "/tmp/dc-extent.txt"
       }
     }
 	{ "execute": "cxl-display-pending-to-add-dc-extents",
 	  "arguments": {
-		  "path": "/machine/peripheral/cxl-memdev0"
+		  "path": "/machine/peripheral/cxl-memdev0",
+          "output": "/tmp/dc-extent.txt"
       }
     }
     '
+extent_file=/tmp/dc-extent.txt
 show_extent(){
-    rm -f /tmp/qmp.txt
+    rm -f $extent_file
+    echo $print | /tmp/qmp-print.conf
     cxl-tool --issue-qmp /tmp/qmp-print.conf
-    cat /tmp/qmp.txt
+    cat $extent_file
     echo
 }
 
