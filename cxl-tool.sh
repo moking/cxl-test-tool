@@ -272,7 +272,7 @@ issue_qmp_cmd() {
         echo "qmp port: $port"
     fi
     echo_task "Install ncat tool on host"
-    sudo apt-get install ncat
+    sudo apt-get install ncat >&/dev/null
 
     echo_task "execute qmp commands"
     cat $qmp_file | ncat localhost $port
