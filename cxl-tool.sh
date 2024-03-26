@@ -305,8 +305,9 @@ help() {
     -A,--accel \t\t\t acceleration mode: tcg (default)/kvm/...
     -Q,--qemu-root \t\t Qemu directory
     -K,--kernel \t\t Linux kernel directory
-    -BK,--deploy-kernel \t\t flag to build kernel, install kernel modeles
+    -BK,--deploy-kernel \t flag to build kernel, install kernel modeles
     -BQ,--build-qemu \t\t flag to build qemu
+    --dmesg-cxl \t\t print out the dmesg of the VM for cxl
     -I,--create \t\t create qemu image
     --install-ndctl \t\t flag to install ndctl
     --ndctl-url \t\t url to git clone ndctl
@@ -315,7 +316,7 @@ help() {
     --ndctl-branch \t\t ndctl branch
     --qemu-branch \t\t qemu branch
     --load-drv \t\t\t load cxl driver
-    --unload-drv \t\t\t unload cxl driver
+    --unload-drv \t\t unload cxl driver
     --setup-qemu \t\t git clone, configure, make and install qemu
     --setup-kernel \t\t git clone, configure, make and install kernel
     --kernel-branch \t\t kernel branch
