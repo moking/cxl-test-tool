@@ -306,6 +306,12 @@ reset_qemu() {
     run_qemu "$topo"
 }
 
+mctp_setup() {
+    echo_task "copy mctp setup script in $cxl_test_tool_dir to VM:/tmp/"
+    scp -P 2024 $cxl_test_tool_dir/test-workflows/mctp.sh root@localhost:/tmp/
+    echo_task "ssh root@localhost -p $ssh_port bash /tmp/mctp.sh"
+    ssh root@localhost -p $ssh_port "bash /tmp/mctp.sh"
+}
 
 help() {
     echo "Usage: $0 [OPTION]..."
@@ -337,6 +343,7 @@ help() {
     --unload-drv \t\t unload cxl driver
     --setup-qemu \t\t git clone, configure, make and install qemu
     --setup-kernel \t\t git clone, configure, make and install kernel
+    --setup-mctp \t\t setup mctp service"
     --kernel-branch \t\t kernel branch
     -P,--port \t\t\t port to ssh to VM
     -L,--login \t\t\t login the VM
@@ -373,6 +380,7 @@ set_default_options(){
     create_image=false
     setup_qemu=false
     setup_kernel=false
+    setup_mctp=false
     run=false
     login=false
     reset=false
@@ -839,6 +847,7 @@ parse_args() {
             --reset) reset=true ;;
             --setup-qemu) setup_qemu=true ;;
             --setup-kernel) setup_kernel=true ;;
+            --setup-mctp) setup_mctp=true ;;
             --poweroff|--shutdown) shutdown=true ;;
             --load-drv) load_drv=true ;;
             --unload-drv) unload_drv=true ;;
@@ -1039,3 +1048,6 @@ if $region_destroy; then
     destroy_cxl_region
 fi
 
+if $setup_mctp; then
+    mctp_setup
+fi
