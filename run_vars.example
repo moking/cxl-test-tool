@@ -18,3 +18,4 @@ qemu_url="https://gitlab.com/qemu-project/qemu.git"
 qemu_branch="master"
 
 accel_mode="tcg"
+cxl_test_tool_dir="/home/fan/cxl/cxl-test-tool/"
