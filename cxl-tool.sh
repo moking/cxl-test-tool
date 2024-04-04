@@ -45,7 +45,6 @@ create_topology() {
     echo "$s"
 }
 
-
 RP1="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,size=512M \
      -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/tmp/lsa.raw,size=512M \
      -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1 \
@@ -75,7 +74,6 @@ M2="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,s
     -device cxl-type3,bus=root_port14,memdev=cxl-mem2,lsa=cxl-lsa2,id=cxl-pmem1 \
     -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=8k"
 
-
 HB2="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,size=512M \
      -object memory-backend-file,id=cxl-mem2,share=on,mem-path=/tmp/cxltest2.raw,size=512M \
      -object memory-backend-file,id=cxl-mem3,share=on,mem-path=/tmp/cxltest3.raw,size=512M \
@@ -95,7 +93,6 @@ HB2="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,
      -device cxl-rp,port=1,bus=cxl.2,id=root_port16,chassis=0,slot=6 \
      -device cxl-type3,bus=root_port16,memdev=cxl-mem4,lsa=cxl-lsa4,id=cxl-pmem3 \
      -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.targets.1=cxl.2,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=8k"
-
 
 SW="-object memory-backend-file,id=cxl-mem0,share=on,mem-path=/tmp/cxltest.raw,size=512M \
     -object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest1.raw,size=512M \
@@ -137,8 +134,6 @@ FM="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=256M 
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=5,target=cxl-pmem1 \
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=6,target=cxl-pmem2 \
  -device virtio-rng-pci,bus=swport1"
-
-
 
 run_qemu() {
     if [ "$1" != "" ];then
@@ -208,6 +203,8 @@ run_qemu() {
     if [ $running -gt 0 ];then
         echo "QEMU:running" > /tmp/qemu-status
         echo "QEMU instance is up, access it: ssh root@localhost -p $ssh_port"
+        echo_task "copy default vars file to /tmp/"
+        cp $default_vars_file /tmp/
         sleep 2
     else
         echo "Qemu: start Fail!"
@@ -865,12 +862,16 @@ parse_args() {
 }
 
 if [ ! -f $default_vars_file ];then
-    warning "default vars file not found!"
+    warning "default $default_vars_file not found!"
 else
     source "$default_vars_file"
 fi
 
 parse_args "$@"
+
+if [ "$opt_vars_file" == "" -a -f "/tmp/.vars.config" ];then
+    opt_vars_file="/tmp/.vars.config"
+fi
 
 if [ ! -f $default_vars_file ] && [ "$opt_vars_file" == "" -o ! -f "$opt_vars_file" ] ;then
     error "both default and optional vars file not found, try 
