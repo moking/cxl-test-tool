@@ -41,7 +41,7 @@ print_key_value() {
 }
 
 create_topology() {
-    s=`python cxl-topology-xml-parser.py`
+    s=`python $cxl_test_tool_dir/cxl-topology-xml-parser.py -F $cxl_test_tool_dir/.cxl-topology.xml`
     echo "$s"
 }
 
@@ -204,7 +204,7 @@ run_qemu() {
         echo "QEMU:running" > /tmp/qemu-status
         echo "QEMU instance is up, access it: ssh root@localhost -p $ssh_port"
         echo_task "copy default vars file to /tmp/"
-        cp $default_vars_file /tmp/
+        cp $cxl_test_tool_dir/$default_vars_file /tmp/
         sleep 2
     else
         echo "Qemu: start Fail!"
@@ -870,32 +870,28 @@ parse_args() {
     done
 }
 
-if [ ! -f $default_vars_file ];then
-    warning "default $default_vars_file not found!"
-else
-    source "$default_vars_file"
-fi
-
 parse_args "$@"
 
-if [ "$opt_vars_file" == "" -a -f "/tmp/.vars.config" ];then
-    opt_vars_file="/tmp/.vars.config"
-fi
-
-if [ ! -f $default_vars_file ] && [ "$opt_vars_file" == "" -o ! -f "$opt_vars_file" ] ;then
-    error "both default and optional vars file not found, try 
-    1) create $default_vars_file from run_vars.example, or 
-    2) pass optional vars file with -F/vars-file option"
-    exit 1
-fi
-
-if [ "$opt_vars_file" != "" -o -f "$opt_vars_file" ] ;then
-    warning "Default vars are overwritten by optional vars file"
+if [ ! -f $default_vars_file ];then
+    warning "default $default_vars_file not found!"
+    if [ "$opt_vars_file" == "" -a -f "/tmp/.vars.config" ];then
+        opt_vars_file="/tmp/.vars.config"
+    else
+        error "both default and optional vars file not found, try
+        1) create $default_vars_file from run_vars.example, or
+        2) pass optional vars file with -F/vars-file option"
+        exit 1
+    fi
     source $opt_vars_file
+else
+    source "$default_vars_file"
+    cp $default_vars_file /tmp/
 fi
 
 if [ ! -n "$image_name" ];then
-	echo "image_name is not given with --image option, use QEMU_IMG ($QEMU_IMG)"
+    if $run; then
+        echo "image_name is not given with --image option, use QEMU_IMG ($QEMU_IMG)"
+    fi
 	image_name=$QEMU_IMG
 fi
 
