@@ -118,7 +118,7 @@ SW="-object memory-backend-file,id=cxl-mem0,share=on,mem-path=/tmp/cxltest.raw,s
 
 FM="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=256M \
  -object memory-backend-file,id=cxl-lsa1,mem-path=/tmp/t3_lsa1.raw,size=1M \
- -object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,size=16M \
+ -object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,size=512M \
  -object memory-backend-file,id=cxl-lsa2,mem-path=/tmp/t3_lsa2.raw,size=1M \
  -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1,hdm_for_passthrough=true \
  -device cxl-rp,port=0,bus=cxl.1,id=cxl_rp_port0,chassis=0,slot=2 \
