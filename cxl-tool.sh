@@ -885,7 +885,10 @@ if [ ! -f $default_vars_file ];then
     source $opt_vars_file
 else
     source "$default_vars_file"
-    cp $default_vars_file /tmp/
+    diff -q $default_vars_file /tmp/.vars.config >&/dev/null
+    if [ "$?" != "0" ];then
+        cp $default_vars_file /tmp/
+    fi
 fi
 
 if [ ! -n "$image_name" ];then
