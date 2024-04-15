@@ -34,6 +34,26 @@ echo_task() {
     echo
 }
 
+same_file() {
+    f1=$1
+    f2=$2
+    if [ "$f1" == "" -o "$f2" == "" ];then
+        echo "0"
+    fi
+
+    if [ ! -f "$f1" -o ! -f "$f2" ];then
+        echo "0"
+    fi
+    v1=`md5sum $f1`
+    v2=`md5sum $f2`
+
+    if [ "$v1" == "$v2" ]; then
+        echo "1"
+    else
+        echo "0"
+    fi
+}
+
 print_key_value() {
     key=$1
     value=$2
@@ -203,8 +223,11 @@ run_qemu() {
     if [ $running -gt 0 ];then
         echo "QEMU:running" > /tmp/qemu-status
         echo "QEMU instance is up, access it: ssh root@localhost -p $ssh_port"
-        echo_task "copy default vars file to /tmp/"
-        cp $cxl_test_tool_dir/$default_vars_file /tmp/
+        rs=`same_file  $cxl_test_tool_dir/$default_vars_file /tmp/.vars.config`
+        if [ "rs" == "0" ];then
+            echo_task "copy default vars file to /tmp/"
+            cp $cxl_test_tool_dir/$default_vars_file /tmp/
+        fi
         sleep 2
     else
         echo "Qemu: start Fail!"
@@ -885,9 +908,11 @@ if [ ! -f $default_vars_file ];then
     source $opt_vars_file
 else
     source "$default_vars_file"
-    diff -q $default_vars_file /tmp/.vars.config >&/dev/null
     if [ "$?" != "0" ];then
-        cp $default_vars_file /tmp/
+        rs=`same_file  $default_vars_file /tmp/.vars.config`
+        if [ "rs" == "0" ];then
+            cp $default_vars_file /tmp/
+        fi
     fi
 fi
 
