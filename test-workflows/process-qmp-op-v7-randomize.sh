@@ -10,7 +10,31 @@ create_cmd_line(){
     { \"execute\": \"$op\",
         \"arguments\": {
         \"path\": \"/machine/peripheral/cxl-memdev0\",
+        \"hid\": 0,
+        \"selection-policy\": 2,
         \"region-id\": 0,
+        \"tag\": \"\",
+        \"extents\": [
+        $extent
+        ]
+    }
+    }"
+    echo $body
+}
+
+release_cmd_line(){
+    op=$1
+    extent=$2
+    body="
+    { \"execute\": \"qmp_capabilities\" }
+
+    { \"execute\": \"$op\",
+        \"arguments\": {
+        \"path\": \"/machine/peripheral/cxl-memdev0\",
+        \"hid\": 0,
+        \"flags\": 1,
+        \"region-id\": 0,
+        \"tag\": \"\",
         \"extents\": [
         $extent
         ]
@@ -99,21 +123,39 @@ echo $print >  /tmp/qmp-print.conf
 
 while true; do 
     echo "Choose OP: 0: add, 1: release, 2: print extent, 9: exit"
-    read choice
+    choice=$(( ( RANDOM % 10 )))
+    if [ $choice -le 6 ];then
+        choice=0
+    else
+        choice=1
+    fi
     if [ "$choice" == "0" ];then
         op="cxl-add-dynamic-capacity"
         echo "Input extent to add, for example (unit: MB): 0-128[,128-256]"
-        read ext_str
+        end=$(( ( RANDOM % 16 + 1)*16))
+        start=$((end-16))
+        #read ext_str
+        ext_str="$start-$end"
         exts=`parse_ext_str $ext_str`
         create_cmd_line $op "$exts" |tee /tmp/qmp.conf
         cxl-tool --issue-qmp /tmp/qmp.conf
+        show_extent
+        echo Add $ext_str
+        #read
     elif [ "$choice" == "1" ];then
         op="cxl-release-dynamic-capacity"
         echo "Input extent to add, for example (unit: MB): 0-128[,128-256]"
-        read ext_str
+        #read ext_str
+        end=$(( ( RANDOM % 16 + 1)*16))
+        start=$((end-16))
+        #read ext_str
+        ext_str="$start-$end"
         exts=`parse_ext_str $ext_str`
-        create_cmd_line $op "$exts" |tee /tmp/qmp.conf
+        release_cmd_line $op "$exts" |tee /tmp/qmp.conf
         cxl-tool --issue-qmp /tmp/qmp.conf
+        show_extent
+        echo release $ext_str
+        #read
     elif [ "$choice" == "2" ];then
         show_extent
     elif [ "$choice" == "9" ];then

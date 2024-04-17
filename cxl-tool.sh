@@ -39,18 +39,17 @@ same_file() {
     f2=$2
     if [ "$f1" == "" -o "$f2" == "" ];then
         echo "0"
-    fi
-
-    if [ ! -f "$f1" -o ! -f "$f2" ];then
+    elif [ ! -f "$f1" -o ! -f "$f2" ];then
         echo "0"
-    fi
-    v1=`md5sum $f1`
-    v2=`md5sum $f2`
+    else 
+        v1=`md5sum $f1`
+        v2=`md5sum $f2`
 
-    if [ "$v1" == "$v2" ]; then
-        echo "1"
-    else
-        echo "0"
+        if [ "$v1" == "$v2" ]; then
+            echo "1"
+        else
+            echo "0"
+        fi
     fi
 }
 

@@ -10,7 +10,31 @@ create_cmd_line(){
     { \"execute\": \"$op\",
         \"arguments\": {
         \"path\": \"/machine/peripheral/cxl-memdev0\",
+        \"hid\": 0,
+        \"selection-policy\": 2,
         \"region-id\": 0,
+        \"tag\": \"\",
+        \"extents\": [
+        $extent
+        ]
+    }
+    }"
+    echo $body
+}
+
+release_cmd_line(){
+    op=$1
+    extent=$2
+    body="
+    { \"execute\": \"qmp_capabilities\" }
+
+    { \"execute\": \"$op\",
+        \"arguments\": {
+        \"path\": \"/machine/peripheral/cxl-memdev0\",
+        \"hid\": 0,
+        \"flags\": 1,
+        \"region-id\": 0,
+        \"tag\": \"\",
         \"extents\": [
         $extent
         ]
@@ -112,7 +136,7 @@ while true; do
         echo "Input extent to add, for example (unit: MB): 0-128[,128-256]"
         read ext_str
         exts=`parse_ext_str $ext_str`
-        create_cmd_line $op "$exts" |tee /tmp/qmp.conf
+        release_cmd_line $op "$exts" |tee /tmp/qmp.conf
         cxl-tool --issue-qmp /tmp/qmp.conf
     elif [ "$choice" == "2" ];then
         show_extent
