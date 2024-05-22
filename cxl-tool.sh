@@ -222,8 +222,8 @@ run_qemu() {
     if [ $running -gt 0 ];then
         echo "QEMU:running" > /tmp/qemu-status
         echo "QEMU instance is up, access it: ssh root@localhost -p $ssh_port"
-        rs=`same_file  $cxl_test_tool_dir/$default_vars_file /tmp/.vars.config`
-        if [ "rs" == "0" ];then
+        rs=`same_file  $cxl_test_tool_dir/$default_vars_file /tmp/$default_vars_file`
+        if [ "$rs" == "0" ];then
             echo_task "copy default vars file to /tmp/"
             cp $cxl_test_tool_dir/$default_vars_file /tmp/
         fi
@@ -895,9 +895,9 @@ parse_args() {
 parse_args "$@"
 
 if [ ! -f $default_vars_file ];then
-    warning "default $default_vars_file not found!"
+    warning "default $default_vars_file under `pwd` not found!"
     if [ "$opt_vars_file" == "" -a -f "/tmp/.vars.config" ];then
-        opt_vars_file="/tmp/.vars.config"
+        opt_vars_file="/tmp/$default_vars_file"
     else
         error "both default and optional vars file not found, try
         1) create $default_vars_file from run_vars.example, or
@@ -905,19 +905,23 @@ if [ ! -f $default_vars_file ];then
         exit 1
     fi
     source $opt_vars_file
+    rs=`same_file  $cxl_test_tool_dir/$default_vars_file /tmp/$default_vars_file`
+    if [ "$rs" == "0" ];then
+        echo "NOTE: config change should always on the $cxl_test_tool_dir config file"
+        cp $cxl_test_tool_dir/$default_vars_file /tmp/
+    fi
+    source $opt_vars_file
 else
     source "$default_vars_file"
-    if [ "$?" != "0" ];then
-        rs=`same_file  $default_vars_file /tmp/.vars.config`
-        if [ "rs" == "0" ];then
-            cp $default_vars_file /tmp/
-        fi
+    rs=`same_file  $default_vars_file /tmp/$default_vars_file`
+    if [ "$rs" == "0" ];then
+        cp $default_vars_file /tmp/
     fi
 fi
 
 if [ ! -n "$image_name" ];then
     if $run; then
-        echo "image_name is not given with --image option, use QEMU_IMG ($QEMU_IMG)"
+        echo "warning: image_name is not given with --image option, use QEMU_IMG ($QEMU_IMG)"
     fi
 	image_name=$QEMU_IMG
 fi
@@ -927,7 +931,7 @@ if [ ! -s "$ssh_port" ];then
 fi
 net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
 
-display_options
+#display_options
 
 if $build_qemu; then
     echo "Build the qemu"

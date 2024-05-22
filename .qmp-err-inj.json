@@ -1,0 +1,7 @@
+{ "execute": "qmp_capabilities" }
+
+{ "execute": "cxl-inject-correctable-error",
+    "arguments": {
+        "path": "/machine/peripheral/cxl-pmem0",
+        "type": "physical"
+    } }

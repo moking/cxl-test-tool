@@ -3,7 +3,10 @@
 	{ "execute": "cxl-add-dynamic-capacity",
 	  "arguments": {
 		  "path": "/machine/peripheral/cxl-memdev0",
-		  "region-id": 0,
+          "host-id":0,
+          "selection-policy": 'prescriptive',
+		  "region": 0,
+          "tag": "",
 		  "extents": [
 		  {
 			  "offset": 0,
@@ -21,7 +24,12 @@
  { "execute": "cxl-release-dynamic-capacity",
 	  "arguments": {
 		  "path": "/machine/peripheral/cxl-memdev0",
-		"region-id": 0,
+          "host-id":0,
+          "removal-policy":"prescriptive",
+          "forced-removal": false,
+          "sanitize-on-release": false,
+          "region": 0,
+          "tag": "",
 		  "extents": [
 		  {
 			  "offset": 0,

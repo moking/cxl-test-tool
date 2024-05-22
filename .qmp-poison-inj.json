@@ -1,0 +1,10 @@
+{ "execute": "qmp_capabilities" }
+
+{ "execute": "cxl-inject-poison",
+    "arguments": {
+         "path": "/machine/peripheral/cxl-pmem0",
+         "start": 2048,
+         "length": 256
+    }
+}
+

@@ -10,7 +10,7 @@ if [ $running -eq 0 ];then
     exit
 fi
 
-cxl-tool --run -A kvm --create-topo
+#cxl-tool --run -A kvm --create-topo
 cxl-tool --create-dcR
 
 bash test-workflows/process-qmp-op.sh
