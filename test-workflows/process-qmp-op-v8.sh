@@ -13,7 +13,6 @@ create_cmd_line(){
         \"host-id\": 0,
         \"selection-policy\": \"prescriptive\",
         \"region\": 0,
-        \"tag\": \"\",
         \"extents\": [
         $extent
         ]
@@ -34,9 +33,7 @@ release_cmd_line(){
         \"host-id\": 0,
         \"removal-policy\":\"prescriptive\",
         \"forced-removal\": false,
-        \"sanitize-on-release\": false,
         \"region\": 0,
-        \"tag\": \"\",
         \"extents\": [
         $extent
         ]
