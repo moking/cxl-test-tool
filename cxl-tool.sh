@@ -354,7 +354,7 @@ help() {
     -BK,--deploy-kernel \t flag to build kernel, install kernel modeles
     -BQ,--build-qemu \t\t flag to build qemu
     --dmesg-cxl \t\t print out the dmesg of the VM for cxl
-    -I,--create \t\t create qemu image
+    --create-image \t\t create qemu image
     --install-ndctl \t\t flag to install ndctl
     --ndctl-url \t\t url to git clone ndctl
     --qemu-url \t\t\t url to git clone ndctl
@@ -664,7 +664,7 @@ qemu_setup() {
     sudo apt install libglib2.0-dev libgcrypt20-dev zlib1g-dev \
         autoconf automake libtool bison flex libpixman-1-dev bc qemu-kvm \
         make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
-        libcap-ng-dev libattr1-dev libslirp-dev libslirp0
+        libcap-ng-dev libattr1-dev libslirp-dev libslirp0 python3-venv
     echo
     echo git clone -b $qemu_branch --single-branch $url $QEMU_ROOT
     git clone -b $qemu_branch --single-branch $url $QEMU_ROOT
@@ -839,7 +839,12 @@ set_default_options
 # processing arguments
 
 parse_args() {
-    while [[ "$#" -gt 0 ]]; do
+    if [[ "$#" -eq "0" ]]; then
+       echo "run with -H for help"
+       exit 0
+    fi
+    while [[ "$#" -ne "0" ]]; do
+        echo "processing: $1"
         case "$1" in
             -C|--cmd) cmd_str="$2"; shift ;;
             -T|--topology) TOPO="$2"; shift ;;
@@ -931,7 +936,7 @@ if [ ! -s "$ssh_port" ];then
 fi
 net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
 
-#display_options
+display_options
 
 if $build_qemu; then
     echo "Build the qemu"
