@@ -244,6 +244,10 @@ shutdown_qemu() {
         echo "Warning: qemu is not running, skip shutdown!"
     else
         ssh root@localhost -p $ssh_port "poweroff"
+		if [ "$?" != "0" ];then
+            echo "execute poweroff on guest failed"
+            exit
+        fi
         echo "" > /tmp/qemu-status
         echo "Qemu: shutdown"
     fi
@@ -588,6 +592,7 @@ create_qemu_image() {
         enp0s2:
             dhcp4: true
     ' > /tmp/netplan-config.yaml
+    chmod 600  /tmp/netplan-config.yaml
 
     echo_task "Create qemu image: $image_name"
     IMG=$image_name
@@ -625,6 +630,7 @@ create_qemu_image() {
     echo_task "cp $/tmp/netplan-config.yaml $DIR/etc/netplan"
     sudo mkdir -p $DIR/etc/netplan/
     sudo cp /tmp/netplan-config.yaml $DIR/etc/netplan/config.yaml
+    openvswitch-switch
 
     echo "#! /bin/bash
 stty rows 80 cols 132
@@ -638,7 +644,7 @@ mount -t 9p -o trans=virtio modshare /lib/modules
 
     sudo chroot $DIR passwd -d root
     sudo chroot $DIR apt-get update
-    sudo chroot $DIR apt-get install -y ssh netplan.io
+    sudo chroot $DIR apt-get install -y ssh netplan.io openvswitch-switch
     sudo umount $DIR
 
     echo_task "Convert raw image to qcow2"
