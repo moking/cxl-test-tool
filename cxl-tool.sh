@@ -333,6 +333,7 @@ reset_qemu() {
 }
 
 mctp_setup() {
+    #install_mctp_pkg
     echo_task "copy mctp setup script in $cxl_test_tool_dir to VM:/tmp/"
     scp -P 2024 $cxl_test_tool_dir/test-workflows/mctp.sh root@localhost:/tmp/
     echo_task "ssh root@localhost -p $ssh_port bash /tmp/mctp.sh"
@@ -388,6 +389,7 @@ help() {
     --disable-region \t\t disable a region (region0 by default)
     --destroy-region \t\t destroy a region (region0 by default)
     --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
+    --try-mctp \t\t Try to test OOB mailbox with MCTP over I2C setup
     -H,--help \t\t\t display help information
     '
 }
@@ -431,6 +433,7 @@ set_default_options(){
     test_cxl=false
     print_dmesg=false
     monitor_wait=false
+    try_mctp_test=false
 }
 
 display_options() {
@@ -597,6 +600,11 @@ create_qemu_image() {
     echo_task "Create qemu image: $image_name"
     IMG=$image_name
     DIR=/tmp/img_dir
+	qemu_img=$QEMU_ROOT/build/qemu-img
+    if [ ! -f $qemu_img ];then
+        echo "Qemu tool: qemu-img not found"
+        exit 1
+    fi
 
 	if [ ! -d `dirname $IMG` ];then
 		mkdir -p `dirname $IMG`
@@ -605,7 +613,7 @@ create_qemu_image() {
 			exit 1
 		fi
 	fi
-	qemu-img create $IMG 16g
+	$qemu_img create $IMG 16g
     sudo mkfs.ext4 $IMG
     mkdir $DIR
     echo_task "mount -o loop $IMG $DIR"
@@ -820,6 +828,31 @@ setup_ndctl() {
     fi
 }
 
+install_mctp_pkg(){
+    echo_task "install mctp program"
+    url="https://github.com/CodeConstruct/mctp.git"
+    mctp_dir="/tmp/mctp"
+
+    ssh root@localhost -p $ssh_port "apt-get install -y libsystemd-dev python3-pytest"
+    ssh root@localhost -p $ssh_port "git clone $url $mctp_dir"
+    ssh root@localhost -p $ssh_port "cd $mctp_dir; git reset --hard 69ed224ff9b5206ca7f3a5e047a9da61377d2ca7"
+
+    ssh root@localhost -p $ssh_port "cd $mctp_dir; meson setup obj; ninja -C obj;\
+        meson install -C obj"
+    ssh root@localhost -p $ssh_port "cd $mctp_dir; cp conf/mctpd-dbus.conf /etc/dbus-1/system.d/"
+    ssh root@localhost -p $ssh_port "cd $mctp_dir; cat conf/mctpd.service | sed 's/sbin/local\/sbin/' > /etc/systemd/system/mctpd.service"
+}
+
+try_fmapi_test() {
+    url="https://github.com/moking/cxl-fmapi-tests-clone.git"
+    test_dir="/tmp/fmapi-test"
+    if [ ! -d $test_dir ];then
+        ssh root@localhost -p $ssh_port "git clone $url $test_dir"
+    fi
+    ssh root@localhost -p $ssh_port "cd $test_dir; gcc cxl-mctp-test.c -o cxl-mctp-test"
+    ssh root@localhost -p $ssh_port "cd $test_dir; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"
+}
+
 cxl_test() {
     setup_ndctl $ndctl_url
     setup_cxl_memory
@@ -896,6 +929,7 @@ parse_args() {
             --destroy-region) region_destroy=true;;
             --disable-region) region_disable=true;;
             --issue-qmp) issue_qmp=true; qmp_file="$2"; shift;;
+            --try-mctp) try_mctp_test=true;;
             -H|--help) help; exit;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
         esac
@@ -1088,4 +1122,8 @@ fi
 
 if $setup_mctp; then
     mctp_setup
+fi
+
+if $try_mctp_test; then
+    try_fmapi_test
 fi
