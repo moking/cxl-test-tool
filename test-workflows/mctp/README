@@ -1,0 +1,8 @@
+1. Apply mctp-patches-kernel.patch to kernel 6.6-rc6;
+2. Compile the kernel with config file (kernel.config);
+3. Apply mctp-patches-qemu.patch to mainstream qemu before compile it.
+4. run cxl-tool --run -T fm
+5. run cxl-tool --install-mctp-pkg (only when mctp program has not been installed on the VM)
+6. run cxl-tool --setup-mctp
+7. run cxl-tool --try-mctp
+
