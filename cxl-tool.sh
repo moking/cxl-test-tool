@@ -390,6 +390,7 @@ help() {
     --destroy-region \t\t destroy a region (region0 by default)
     --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
     --try-mctp \t\t Try to test OOB mailbox with MCTP over I2C setup
+    --install-ras \t\t Install rasdaemon tool
     -H,--help \t\t\t display help information
     '
 }
@@ -434,6 +435,7 @@ set_default_options(){
     print_dmesg=false
     monitor_wait=false
     try_mctp_test=false
+    rasdaemon_install=false
 }
 
 display_options() {
@@ -853,6 +855,118 @@ try_fmapi_test() {
     ssh root@localhost -p $ssh_port "cd $test_dir; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"
 }
 
+
+remote_file_exists() {
+    file=$1
+    cmd="\
+    if [ -e $file ];then
+        echo 1
+    else
+        echo 0
+    fi"
+
+    ssh root@localhost -p $ssh_port "$cmd"
+}
+
+sh_on_remote() {
+    cmd=$1
+    if [ "$cmd" == "" ];then
+        echo "no command string provided"
+        exit
+    fi
+    ssh root@localhost -p $ssh_port "$cmd"
+}
+
+# start: below are rasdaemon related
+install_rasdaemon() {
+    echo_task "install rasdaemon"
+    dir="~/rasdaemon"
+    branch="scrub_control"
+    url="https://github.com/moking/rasdaemon-clone"
+
+    rt=`remote_file_exists $dir`
+    if [ "$rt" == "1" ];then
+        echo -n "$dir exists, delete it before git clone (Y/N): "
+        read ans
+        if [ "$ans" == "Y" ];then
+            sh_on_remote "rm -rf $dir"
+            sh_on_remote "git clone -b $branch --single-branch $url $dir"
+            sh_on_remote "cd $dir; bash ./run-me.sh ; ls rasdaemon -lh"
+        fi
+    else
+        sh_on_remote "git clone -b $branch --single-branch $url $dir"
+        sh_on_remote "cd $dir; bash ./run-me.sh ; ls rasdaemon -lh"
+    fi
+
+    sh_on_remote "rasdaemon"
+}
+
+install_mce_inject() {
+    dir="~/mce-inject"
+    branch="master"
+    url="https://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git"
+
+    echo_task "install mce inject"
+
+    rt=`remote_file_exists $dir`
+    if [ "$rt" == "1" ];then
+        echo -n "$dir exists, delete it before git clone (Y/N): "
+        read ans
+        if [ "$ans" == "Y" ];then
+            sh_on_remote "rm -rf $dir"
+            sh_on_remote "git clone -b $branch --single-branch $url $dir"
+        fi
+    else
+        sh_on_remote "git clone -b $branch --single-branch $url $dir"
+    fi
+    sh_on_remote "apt-get install flex"
+    sh_on_remote "cd $dir; make"
+}
+
+install_mce_test() {
+    dir="~/mce-test"
+    branch="master"
+    url="https://git.kernel.org/pub/scm/linux/kernel/git/gong.chen/mce-test.git"
+
+    echo_task "install mce test"
+
+    rt=`remote_file_exists $dir`
+    if [ "$rt" == "1" ];then
+        echo -n "$dir exists, delete it before git clone (Y/N): "
+        read ans
+        if [ "$ans" == "Y" ];then
+            sh_on_remote "rm -rf $dir"
+            sh_on_remote "git clone -b $branch --single-branch $url $dir"
+        fi
+    else
+        sh_on_remote "git clone -b $branch --single-branch $url $dir"
+    fi
+    sh_on_remote "cd $dir; make"
+}
+
+install_aer_inject() {
+    dir="~/aer-inject"
+    branch="master"
+    url="https://git.kernel.org/pub/scm/linux/kernel/git/gong.chen/aer-inject.git"
+
+    echo_task "install aer inject"
+
+    rt=`remote_file_exists $dir`
+    if [ "$rt" == "1" ];then
+        echo -n "$dir exists, delete it before git clone (Y/N): "
+        read ans
+        if [ "$ans" == "Y" ];then
+            sh_on_remote "rm -rf $dir"
+            sh_on_remote "git clone -b $branch --single-branch $url $dir"
+        fi
+    else
+        sh_on_remote "git clone -b $branch --single-branch $url $dir"
+    fi
+    sh_on_remote "cd $dir; make"
+}
+
+# end: below are rasdaemon related
+
 cxl_test() {
     setup_ndctl $ndctl_url
     setup_cxl_memory
@@ -930,6 +1044,7 @@ parse_args() {
             --disable-region) region_disable=true;;
             --issue-qmp) issue_qmp=true; qmp_file="$2"; shift;;
             --try-mctp) try_mctp_test=true;;
+            --install-ras) rasdaemon_install=true;;
             -H|--help) help; exit;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
         esac
@@ -1126,4 +1241,11 @@ fi
 
 if $try_mctp_test; then
     try_fmapi_test
+fi
+
+if $rasdaemon_install; then
+    install_rasdaemon
+    install_mce_inject
+    install_mce_test
+    install_aer_inject
 fi
