@@ -1,0 +1,37 @@
+# Variations in syntax
+#
+# Either specify the PCI id on the command-line option or uncomment and edit
+# the PCI_ID line below using the correct PCI ID.
+#
+# We can use lower-case:
+#
+aer
+# pci_id [WWWW:]XX.YY.Z
+cor_status rcvr
+header_log 0 1 2 3
+#
+# We can use aliases for key words:
+#
+AER
+# ID [WWWW:]XX.YY.Z
+COR BAD_TLP
+HL 4 5 6 7
+#
+# We can put multiple errors on the same line and use octal and hexadecimal
+# numbers:
+#
+AER
+# PCI_ID [WWWW:]XX.YY.Z
+COR_STATUS BAD_DLLP REP_ROLL
+HEADER_LOG 010 0x9 0xa 0xB
+#
+# We can use defaults:
+#
+AER
+# PCI_ID [WWWW:]XX.YY.Z
+COR_STATUS REP_TIMER
+#
+# Newlines are ignored and the PCI ID can be specified on the command-line.
+# We can also use raw numbers for the error:
+#
+AER COR_STATUS 0x2 HEADER_LOG 0 1 2 3

@@ -1,0 +1,13 @@
+# Inject a correctable bad TLP error into the device with header log
+# words 0 1 2 3.
+#
+# Either specify the PCI id on the command-line option or uncomment and edit
+# the PCI_ID line below using the correct PCI ID.
+#
+# Note that system firmware/BIOS may mask certain errors and/or not report
+# header log words.
+#
+AER
+# PCI_ID [WWWW:]XX.YY.Z
+COR_STATUS BAD_TLP
+HEADER_LOG 0 1 2 3

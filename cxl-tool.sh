@@ -8,6 +8,7 @@ qmp_file=""
 
 top_file=/tmp/topo.txt
 cmd_file=/tmp/cmd
+einj_file=""
 
 echo '
 rp=13
@@ -436,6 +437,7 @@ set_default_options(){
     monitor_wait=false
     try_mctp_test=false
     rasdaemon_install=false
+    aer_inject=false
 }
 
 display_options() {
@@ -965,6 +967,23 @@ install_aer_inject() {
     sh_on_remote "cd $dir; make"
 }
 
+inject_aer() {
+    echo_task "inject aer"
+    file=$1
+    if [ -z "$file" -o ! -f $file ];then
+        echo "EINJ config file missing!"
+        echo "=> Example files can be found in $cxl_test_tool_dir/einj-examples"
+        exit
+    fi
+
+    dir="~/aer-inject"
+    scp -P 2024 $file root@localhost:/tmp/aer.input
+    str="cd $dir; ./aer-inject /tmp/aer.input"
+    sh_on_remote "dmesg -C"
+    sh_on_remote "$str"
+    sh_on_remote "dmesg"
+}
+
 # end: below are rasdaemon related
 
 cxl_test() {
@@ -1045,6 +1064,7 @@ parse_args() {
             --issue-qmp) issue_qmp=true; qmp_file="$2"; shift;;
             --try-mctp) try_mctp_test=true;;
             --install-ras) rasdaemon_install=true;;
+            -EINJ|--aer-inject) aer_inject=true; einj_file=$2;shift;;
             -H|--help) help; exit;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
         esac
@@ -1248,4 +1268,8 @@ if $rasdaemon_install; then
     install_mce_inject
     install_mce_test
     install_aer_inject
+fi
+
+if $aer_inject; then
+    inject_aer $einj_file
 fi

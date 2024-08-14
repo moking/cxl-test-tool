@@ -1,0 +1,15 @@
+# Simultaneously inject a correctable bad TLP and an
+# uncorrectable/non-fatal completion abort error into the device with header
+# log words 0 1 2 3.
+#
+# Either specify the PCI id on the command-line option or uncomment and edit
+# the PCI_ID line below using the correct PCI ID.
+#
+# Note that system firmware/BIOS may mask certain errors, change their severity
+# and/or not report header log words.
+#
+AER
+# PCI_ID [WWWW:]XX.YY.Z
+COR_STATUS BAD_TLP
+UNCOR_STATUS COMP_ABORT
+HEADER_LOG 0 1 2 3
