@@ -9,6 +9,7 @@ qmp_file=""
 top_file=/tmp/topo.txt
 cmd_file=/tmp/cmd
 einj_file=""
+ssh_port="2024"
 
 echo '
 rp=13
@@ -42,16 +43,33 @@ same_file() {
         echo "0"
     elif [ ! -f "$f1" -o ! -f "$f2" ];then
         echo "0"
-    else 
-        v1=`md5sum $f1`
-        v2=`md5sum $f2`
 
-        if [ "$v1" == "$v2" ]; then
+        rs=`diff -q -i -E -Z -w -B $f1 $f2`
+        if [ "$rs" == "" ]; then
             echo "1"
         else
             echo "0"
         fi
     fi
+}
+
+sh_on_remote() {
+    cmd=$1
+    echo root@VM\#: ssh root@localhost -p $ssh_port "$cmd"
+    ssh root@localhost -p $ssh_port "$cmd"
+}
+
+copy_to_remote() {
+    dst="/tmp/"
+    if [ "$1" == "" ];then
+        error "no source for scp command"
+        exit
+    fi
+    if [ "$2" != "" ];then
+        dst=$2
+    fi
+    echo "scp -r -P 2024 $1 root@localhost:$dst 2>&1 1>/dev/null"
+    scp -r -P 2024 $1 root@localhost:$dst 2>&1 1>/dev/null
 }
 
 print_key_value() {
@@ -61,6 +79,10 @@ print_key_value() {
 }
 
 create_topology() {
+    python_exists=`which python`
+    if [ "$python_exists" == "" ];then
+        sudo apt-get install python3 python-is-python3
+    fi
     s=`python $cxl_test_tool_dir/cxl-topology-xml-parser.py -F $cxl_test_tool_dir/.cxl-topology.xml`
     echo "$s"
 }
@@ -244,7 +266,7 @@ shutdown_qemu() {
     if [ $running -eq 0 ];then
         echo "Warning: qemu is not running, skip shutdown!"
     else
-        ssh root@localhost -p $ssh_port "poweroff"
+        sh_on_remote "poweroff"
 		if [ "$?" != "0" ];then
             echo "execute poweroff on guest failed"
             exit
@@ -257,34 +279,28 @@ shutdown_qemu() {
 load_cxl_driver() {
     echo_task "install cxl modules"
 
-    echo "Loading cxl drivers: modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem cxl_pmem"
-    ssh root@localhost -p $ssh_port "modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem"
-    echo "Loading nd_pmem for creating region for cxl pmem"
-    ssh root@localhost -p $ssh_port "modprobe -a nd_pmem"
-    echo "Loading dax related drivers"
-    ssh root@localhost -p $ssh_port "modprobe -a dax device_dax"
+    sh_on_remote "modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem"
+    sh_on_remote "modprobe -a nd_pmem"
+    sh_on_remote "modprobe -a dax device_dax"
 
     echo
-    ssh root@localhost -p $ssh_port "lsmod"
+    sh_on_remote "lsmod"
 }
 
 unload_cxl_driver() {
     echo_task "uninstall cxl modules"
 
-    echo "remove cxl drivers" 
-    ssh root@localhost -p $ssh_port "rmmod -f cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core"
-    echo "remove nd_pmem" 
-    ssh root@localhost -p $ssh_port "rmmod -f nd_pmem"
-    echo "remove dax related drivers"
-    ssh root@localhost -p $ssh_port "rmmod -f device_dax dax nd_btt libnvdimm"
+    sh_on_remote "rmmod -f cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core"
+    sh_on_remote "rmmod -f nd_pmem"
+    sh_on_remote "rmmod -f device_dax dax nd_btt libnvdimm"
 
     echo
-    ssh root@localhost -p $ssh_port "lsmod"
+    sh_on_remote "lsmod"
 }
 
 
 create_cxl_dc_region() {
-    mod_loaded=`ssh root@localhost -p $ssh_port "lsmod | grep -c cxl_mem"`
+    mod_loaded=`sh_on_remote "lsmod | grep -c cxl_mem"`
     if [ "$mod_loaded" == "0" ];then
         load_cxl_driver
     fi
@@ -301,10 +317,10 @@ create_cxl_dc_region() {
           echo  decoder2.0 > /sys/bus/cxl/devices/\$region/target0; \
           echo 1 > /sys/bus/cxl/devices/\$region/commit; \
           echo \$region > /sys/bus/cxl/drivers/cxl_region/bind"
-    ssh root@localhost -p $ssh_port "$cmd_str"
+    sh_on_remote "$cmd_str"
 
     echo_task "Show dc region"
-    ssh root@localhost -p $ssh_port "cxl list -iu"
+    sh_on_remote "cxl list -iu"
 }
 
 issue_qmp_cmd() {
@@ -335,10 +351,8 @@ reset_qemu() {
 
 mctp_setup() {
     #install_mctp_pkg
-    echo_task "copy mctp setup script in $cxl_test_tool_dir to VM:/tmp/"
-    scp -P 2024 $cxl_test_tool_dir/test-workflows/mctp.sh root@localhost:/tmp/
-    echo_task "ssh root@localhost -p $ssh_port bash /tmp/mctp.sh"
-    ssh root@localhost -p $ssh_port "bash /tmp/mctp.sh"
+    copy_to_remote $cxl_test_tool_dir/test-workflows/mctp.sh /tmp/
+    sh_on_remote "bash /tmp/mctp.sh"
 }
 
 help() {
@@ -519,17 +533,11 @@ create_cxl_region() {
     fi
     load_cxl_driver
 
-    echo_task "Show cxl device: cxl list -iu"
-    ssh root@localhost -p $ssh_port "cxl list -iu"
-
-    echo 
-    echo "create region"
-    ssh root@localhost -p $ssh_port "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M -t $mode"
-
-    echo_task "Show cxl device: cxl list -iu"
-    ssh root@localhost -p $ssh_port "cxl list -iu"
+    sh_on_remote "cxl list -iu"
+    sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M -t $mode"
+    sh_on_remote "cxl list -iu"
     if [ "$mode" == "ram" ];then
-        ssh root@localhost -p $ssh_port "lsmem"
+        sh_on_remote "lsmem"
     fi
 }
 
@@ -538,9 +546,8 @@ destroy_cxl_region() {
     if [ "$1" != "" ];then
         region=$1
     fi
-    ssh root@localhost -p $ssh_port "cxl destroy-region $region -f"
-    echo_task "Show cxl device: cxl list -iu"
-    ssh root@localhost -p $ssh_port "cxl list -iu"
+    sh_on_remote "cxl destroy-region $region -f"
+    sh_on_remote "cxl list -iu"
 }
 
 disable_cxl_region() {
@@ -548,36 +555,19 @@ disable_cxl_region() {
     if [ "$1" != "" ];then
         region=$1
     fi
-    ssh root@localhost -p $ssh_port "cxl disable-region $region -f"
-    echo_task "Show cxl device: cxl list -iu"
-    ssh root@localhost -p $ssh_port "cxl list -iu"
+    sh_on_remote "cxl disable-region $region -f"
+    sh_on_remote "cxl list -iu"
 }
 
 setup_cxl_memory() {
     load_cxl_driver
 
-    echo "Show cxl device: cxl list -iu"
-    ssh root@localhost -p $ssh_port "cxl list -iu"
-
-    echo 
-    echo "create region"
-    ssh root@localhost -p $ssh_port "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M --debug"
-
-    echo 
-    echo "create namespace"
-    ssh root@localhost -p $ssh_port "ndctl create-namespace -m dax -r region0"
-
-    echo 
-    echo "daxctl reconfigure-device --mode=system-ram --no-online dax0.0"
-    ssh root@localhost -p $ssh_port "daxctl reconfigure-device --mode=system-ram --no-online dax0.0"
-
-    echo 
-    echo "online memory"
-    ssh root@localhost -p $ssh_port "daxctl online-memory dax0.0"
-
-    echo 
-    echo "show memory"
-    ssh root@localhost -p $ssh_port "lsmem"
+    sh_on_remote "cxl list -iu"
+    sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M --debug"
+    sh_on_remote "ndctl create-namespace -m dax -r region0"
+    sh_on_remote "daxctl reconfigure-device --mode=system-ram --no-online dax0.0"
+    sh_on_remote "daxctl online-memory dax0.0"
+    sh_on_remote "lsmem"
 }
 
 kernel_deploy() {
@@ -588,7 +578,7 @@ kernel_deploy() {
 }
 
 display_dmesg() {
-    ssh root@localhost -p $ssh_port "dmesg | grep cxl | grep -v Doorbell | grep -v 0x4102"
+    sh_on_remote "dmesg | grep cxl | grep -v Doorbell | grep -v 0x4102"
 }
 
 create_qemu_image() {
@@ -801,8 +791,7 @@ gdb_qemu() {
 
 gdb_ndctl() {
     opt=$1
-    echo ssh root@localhost -p $ssh_port "cd ndctl; gdb --args build/$opt"
-    ssh root@localhost -p $ssh_port "cd ndctl; gdb --args build/$opt"
+    sh_on_remote "cd ndctl; gdb --args build/$opt"
 }
 
 setup_ndctl() {
@@ -813,9 +802,9 @@ setup_ndctl() {
         url=https://github.com/pmem/ndctl.git
     fi
 
-    ssh root@localhost -p $ssh_port "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev"
-    ssh root@localhost -p $ssh_port "git clone $url "
-    ssh root@localhost -p $ssh_port "\
+    sh_on_remote "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev"
+    sh_on_remote "git clone $url "
+    sh_on_remote "\
         cd ndctl;\
         meson setup build;\
         meson compile -C build;\
@@ -823,7 +812,7 @@ setup_ndctl() {
     "
     echo "**********************"
     echo "cxl list:"
-    ssh root@localhost -p $ssh_port "cxl list"
+    sh_on_remote "cxl list"
     echo "**********************"
     if [ "$?" != "0" ];then
         echo_task "Install ndctl failed!"
@@ -837,24 +826,23 @@ install_mctp_pkg(){
     url="https://github.com/CodeConstruct/mctp.git"
     mctp_dir="/tmp/mctp"
 
-    ssh root@localhost -p $ssh_port "apt-get install -y libsystemd-dev python3-pytest"
-    ssh root@localhost -p $ssh_port "git clone $url $mctp_dir"
-    ssh root@localhost -p $ssh_port "cd $mctp_dir; git reset --hard 69ed224ff9b5206ca7f3a5e047a9da61377d2ca7"
+    sh_on_remote "apt-get install -y libsystemd-dev python3-pytest"
+    sh_on_remote "git clone $url $mctp_dir"
+    sh_on_remote "cd $mctp_dir; git reset --hard 69ed224ff9b5206ca7f3a5e047a9da61377d2ca7"
 
-    ssh root@localhost -p $ssh_port "cd $mctp_dir; meson setup obj; ninja -C obj;\
-        meson install -C obj"
-    ssh root@localhost -p $ssh_port "cd $mctp_dir; cp conf/mctpd-dbus.conf /etc/dbus-1/system.d/"
-    ssh root@localhost -p $ssh_port "cd $mctp_dir; cat conf/mctpd.service | sed 's/sbin/local\/sbin/' > /etc/systemd/system/mctpd.service"
+    sh_on_remote "cd $mctp_dir; meson setup obj; ninja -C obj; meson install -C obj"
+    sh_on_remote "cd $mctp_dir; cp conf/mctpd-dbus.conf /etc/dbus-1/system.d/"
+    sh_on_remote "cd $mctp_dir; cat conf/mctpd.service | sed 's/sbin/local\/sbin/' > /etc/systemd/system/mctpd.service"
 }
 
 try_fmapi_test() {
     url="https://github.com/moking/cxl-fmapi-tests-clone.git"
     test_dir="/tmp/fmapi-test"
     if [ ! -d $test_dir ];then
-        ssh root@localhost -p $ssh_port "git clone $url $test_dir"
+        sh_on_remote "git clone $url $test_dir"
     fi
-    ssh root@localhost -p $ssh_port "cd $test_dir; gcc cxl-mctp-test.c -o cxl-mctp-test"
-    ssh root@localhost -p $ssh_port "cd $test_dir; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"
+    sh_on_remote "cd $test_dir; gcc cxl-mctp-test.c -o cxl-mctp-test"
+    sh_on_remote "cd $test_dir; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"
 }
 
 
@@ -867,16 +855,7 @@ remote_file_exists() {
         echo 0
     fi"
 
-    ssh root@localhost -p $ssh_port "$cmd"
-}
-
-sh_on_remote() {
-    cmd=$1
-    if [ "$cmd" == "" ];then
-        echo "no command string provided"
-        exit
-    fi
-    ssh root@localhost -p $ssh_port "$cmd"
+    sh_on_remote "$cmd"
 }
 
 # start: below are rasdaemon related
@@ -977,7 +956,7 @@ inject_aer() {
     fi
 
     dir="~/aer-inject"
-    scp -P 2024 $file root@localhost:/tmp/aer.input 2>&1 1>&/dev/null
+    copy_to_remote $file /tmp/aer.input
     str="cd $dir; ./aer-inject /tmp/aer.input"
     sh_on_remote "dmesg -C"
     sh_on_remote "$str"
@@ -1001,15 +980,14 @@ exec_cmd() {
         echo "Warning: qemu is not running, skip executing command!"
     else
         if [ -n "$cmd_str" ]; then
-            echo "Qemu: execute \"$cmd_str\" on VM"
-            ssh root@localhost -p $ssh_port "$cmd_str"
+            sh_on_remote "$cmd_str"
         fi
     fi
 }
 
 set_default_options
-# processing arguments
 
+# processing arguments
 parse_args() {
     if [[ "$#" -eq "0" ]]; then
        echo "run with -H for help"
@@ -1183,7 +1161,7 @@ if $run; then
     run_qemu "$topo"
 fi
 if $login; then
-    ssh root@localhost -p $ssh_port
+    sh_on_remote
 fi
 
 if $shutdown; then
