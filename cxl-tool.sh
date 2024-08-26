@@ -54,8 +54,13 @@ same_file() {
 }
 
 sh_on_remote() {
-    cmd=$1
+    cmd="$1"
     echo root@VM\#: ssh root@localhost -p $ssh_port "$cmd"
+    ssh root@localhost -p $ssh_port "$cmd"
+}
+
+raw_sh_on_remote() {
+    cmd="$1"
     ssh root@localhost -p $ssh_port "$cmd"
 }
 
@@ -300,7 +305,7 @@ unload_cxl_driver() {
 
 
 create_cxl_dc_region() {
-    mod_loaded=`sh_on_remote "lsmod | grep -c cxl_mem"`
+    mod_loaded=`raw_sh_on_remote "lsmod | grep -c cxl_mem"`
     if [ "$mod_loaded" == "0" ];then
         load_cxl_driver
     fi
