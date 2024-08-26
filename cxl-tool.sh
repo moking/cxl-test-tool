@@ -791,7 +791,7 @@ gdb_kernel() {
 gdb_qemu() {
     pid=`ps -ef | grep qemu-system | awk '{print $2}'`
     echo pid: $pid
-    gdb -p $pid
+    gdb -tui -p $pid
 }
 
 gdb_ndctl() {
