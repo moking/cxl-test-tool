@@ -790,7 +790,7 @@ kernel_setup() {
 
 gdb_kernel() {
     cd $KERNEL_ROOT
-    gdb ./vmlinux
+    gdb -tui ./vmlinux
 }
 
 gdb_qemu() {
@@ -977,7 +977,7 @@ inject_aer() {
     fi
 
     dir="~/aer-inject"
-    scp -P 2024 $file root@localhost:/tmp/aer.input
+    scp -P 2024 $file root@localhost:/tmp/aer.input 2>&1 1>&/dev/null
     str="cd $dir; ./aer-inject /tmp/aer.input"
     sh_on_remote "dmesg -C"
     sh_on_remote "$str"
@@ -1016,7 +1016,7 @@ parse_args() {
        exit 0
     fi
     while [[ "$#" -ne "0" ]]; do
-        echo "processing: $1"
+        #echo "processing: $1"
         case "$1" in
             -C|--cmd) cmd_str="$2"; shift ;;
             -T|--topology) TOPO="$2"; shift ;;
@@ -1111,7 +1111,7 @@ if [ ! -s "$ssh_port" ];then
 fi
 net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
 
-display_options
+#display_options
 
 if $build_qemu; then
     echo "Build the qemu"
