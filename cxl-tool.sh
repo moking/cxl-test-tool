@@ -800,15 +800,16 @@ gdb_ndctl() {
 setup_ndctl() {
     echo_task "setup ndctl to install cxl tools"
     url=$1
+    dir=/tmp/ndctl
 
     if [ "$url" == "" -o `echo $url | grep -c "github"` -eq 0 ]; then
         url=https://github.com/pmem/ndctl.git
     fi
 
     sh_on_remote "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev"
-    sh_on_remote "git clone $url "
+    sh_on_remote "git clone $url $dir"
     sh_on_remote "\
-        cd ndctl;\
+        cd $dir;\
         meson setup build;\
         meson compile -C build;\
         meson install -C build
