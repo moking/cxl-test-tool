@@ -333,8 +333,6 @@ issue_qmp_cmd() {
     if [ "port" == "" ];then
         error "qmp port not found, check whether qemu is launched with qmp support"
         exit 1
-    else
-        echo "qmp port: $port"
     fi
     echo_task "Install ncat tool on host"
     sudo apt-get install ncat >&/dev/null
