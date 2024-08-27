@@ -1,5 +1,13 @@
 # cxl-test-tool: a tool to make cxl test with kernel and qemu setup easier
 
+# Recent important changes.
+<pre>
+1. Updated DCD test workflow;
+2. Add mctp setup;
+3. Add ras related test support;
+4. ...
+</pre>
+
 # run configuration file
 All the run configuration options are defined in .vars.config. This options will control where the directory of qemu, kernel, and which qemu image we want to use.
 Also, all the URLs related to git clone operation is defined there.
@@ -64,20 +72,12 @@ This command can be used for poison injection, dc extent add/release
 # print out help information to show all available options
 bash cxl-tool.sh --help
 
-# instructions for DCD related test
-1. run qemu with DCD topology;
-2. create DC region: cxl-tool.sh --dcR
-3. test add/release dc extents through qmp interface: cxl-tool.sh --issue-qmp qmp-command.example
-4. check extents: cxl-tool.sh --login
+# Instructions for DCD related test
+1. Apply the patch test-workflows/0001-qapi-cxl.json-Add-QMP-interfaces-to-print-out-accept.patch on top of qemu source code which have DCD emulation support;
+2. Create a cxl topology that has DCD support (only single dcd device tested) in .cxl-topology.xml;
+3. run test
 <pre>
-root@DT:~# ls /sys/bus/cxl/devices/decoder0.0/region0/dax_region0/ -lh
-total 0
-drwxr-xr-x 3 root root    0 Feb  8 20:09 dax0.0
-drwxr-xr-x 2 root root    0 Feb  8 20:14 dax_region
--r--r--r-- 1 root root 4.0K Feb  8 20:14 devtype
-lrwxrwxrwx 1 root root    0 Feb  8 20:14 driver -> ../../../../../../../bus/cxl/drivers/cxl_dax_region
-drwxr-xr-x 2 root root    0 Feb  8 20:14 extent0
-drwxr-xr-x 2 root root    0 Feb  8 20:14 extent64
--r--r--r-- 1 root root 4.0K Feb  8 20:14 modalias
-lrwxrwxrwx 1 root root    0 Feb  8 20:09 subsystem -> ../../../../../../../bus/cxl
+bash test-workflows/dcd-test.sh
+or
+bash test-workflows/dcd-test.sh -r (Generate add/release dc extent sequence randomly)
 </pre>

@@ -1,0 +1,189 @@
+From 01217545ff5d9202cf2c627ddda8a7da446df25d Mon Sep 17 00:00:00 2001
+From: Fan Ni <fan.ni@samsung.com>
+Date: Thu, 29 Feb 2024 15:17:42 -0800
+Subject: [PATCH] qapi/cxl.json: Add QMP interfaces to print out accepted and
+ pending DC extents
+
+With the change, we add the following two QMP interfaces to print out
+extents information in the device,
+1. cxl-display-accepted-dc-extents: print out the accepted DC extents in
+   the device;
+2. cxl-display-pending-to-add-dc-extents: print out the pending-to-add
+   DC extents in the device;
+The output is appended to a file passed to the command and by default
+it is /tmp/dc-extent.txt.
+
+Signed-off-by: Fan Ni <fan.ni@samsung.com>
+---
+ hw/mem/cxl_type3.c       | 91 ++++++++++++++++++++++++++++++++++++++++
+ hw/mem/cxl_type3_stubs.c | 12 ++++++
+ qapi/cxl.json            | 34 +++++++++++++++
+ 3 files changed, 137 insertions(+)
+
+diff --git a/hw/mem/cxl_type3.c b/hw/mem/cxl_type3.c
+index e616801c81..3d7289fa84 100644
+--- a/hw/mem/cxl_type3.c
++++ b/hw/mem/cxl_type3.c
+@@ -2126,6 +2126,97 @@ void qmp_cxl_release_dynamic_capacity(const char *path, uint16_t host_id,
+     }
+ }
+ 
++static void cxl_dcd_display_extent_list(const CXLType3Dev *dcd, const char *f,
++                                        bool accepted_list, Error **errp)
++{
++    FILE *fp = NULL;
++    int i = 0;
++
++    if (!dcd->dc.num_regions) {
++        error_setg(errp, "No dynamic capacity support from the device");
++        return;
++    }
++
++    if (!f) {
++        fp = fopen("/tmp/dc-extent.txt", "a+");
++    } else {
++        fp = fopen(f, "a+");
++    }
++
++    if (!fp) {
++        error_setg(errp, "Open log file failed");
++        return;
++    }
++    if (accepted_list) {
++        const CXLDCExtentList *list = &dcd->dc.extents;
++        CXLDCExtent *ent;
++        fprintf(fp, "Print accepted extent info:\n");
++
++        QTAILQ_FOREACH(ent, list, node) {
++            fprintf(fp, "%d: [0x%lx - 0x%lx]\n", i++, ent->start_dpa,
++                    ent->start_dpa + ent->len);
++        }
++    } else {
++        const CXLDCExtentGroupList *list = &dcd->dc.extents_pending;
++        CXLDCExtentGroup *group;
++        CXLDCExtent *ent;
++        int j = 0;
++
++        fprintf(fp, "Print pending-to-add extent info:\n");
++        QTAILQ_FOREACH(group, list, node) {
++            fprintf(fp, "Group %d\n", j++);
++            QTAILQ_FOREACH(ent, &group->list, node) {
++                fprintf(fp, " %d: [0x%lx - 0x%lx]\n", i++, ent->start_dpa,
++                        ent->start_dpa + ent->len);
++            }
++        }
++    }
++
++    fprintf(fp, "In total, %d extents printed!\n", i);
++    fclose(fp);
++}
++
++void qmp_cxl_display_accepted_dc_extents(const char *path, const char *f,
++                                         Error **errp)
++{
++    Object *obj;
++    CXLType3Dev *dcd;
++
++    obj = object_resolve_path(path, NULL);
++    if (!obj) {
++        error_setg(errp, "Unable to resolve path");
++        return;
++    }
++    if (!object_dynamic_cast(obj, TYPE_CXL_TYPE3)) {
++        error_setg(errp, "Path not point to a valid CXL type3 device");
++        return;
++    }
++
++    dcd = CXL_TYPE3(obj);
++    cxl_dcd_display_extent_list(dcd, f, true, errp);
++}
++
++void qmp_cxl_display_pending_to_add_dc_extents(const char *path, const char *f,
++                                               Error **errp)
++{
++    Object *obj;
++    CXLType3Dev *dcd;
++
++    obj = object_resolve_path(path, NULL);
++    if (!obj) {
++        error_setg(errp, "Unable to resolve path");
++        return;
++    }
++    if (!object_dynamic_cast(obj, TYPE_CXL_TYPE3)) {
++        error_setg(errp, "Path not point to a valid CXL type3 device");
++        return;
++    }
++
++
++    dcd = CXL_TYPE3(obj);
++    cxl_dcd_display_extent_list(dcd, f, false, errp);
++}
++
+ static void ct3_class_init(ObjectClass *oc, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(oc);
+diff --git a/hw/mem/cxl_type3_stubs.c b/hw/mem/cxl_type3_stubs.c
+index c1a5e4a7c1..4c1421d150 100644
+--- a/hw/mem/cxl_type3_stubs.c
++++ b/hw/mem/cxl_type3_stubs.c
+@@ -92,3 +92,15 @@ void qmp_cxl_release_dynamic_capacity(const char *path, uint16_t host_id,
+ {
+     error_setg(errp, "CXL Type 3 support is not compiled in");
+ }
++
++void qmp_cxl_display_accepted_dc_extents(const char *path, const char *f,
++                                         Error **errp)
++{
++    error_setg(errp, "CXL Type 3 support is not compiled in");
++}
++
++void qmp_cxl_display_pending_to_add_dc_extents(const char *path, const char *f,
++                                               Error **errp)
++{
++    error_setg(errp, "CXL Type 3 support is not compiled in");
++}
+diff --git a/qapi/cxl.json b/qapi/cxl.json
+index e9315d5b4d..e2cd816e58 100644
+--- a/qapi/cxl.json
++++ b/qapi/cxl.json
+@@ -550,3 +550,37 @@
+            },
+   'features': [ 'unstable' ]
+ }
++
++
++##
++# @cxl-display-accepted-dc-extents:
++#
++# Command to print out all the accepted DC extents in the device
++#
++# @path: CXL DCD canonical QOM path
++#
++# @output: path of output file to dump the results to
++#
++# Since : 9.1
++##
++{ 'command': 'cxl-display-accepted-dc-extents',
++  'data': { 'path': 'str',
++            'output': 'str'
++           }
++}
++
++##
++# @cxl-display-pending-to-add-dc-extents:
++#
++# Command to print out all the pending-to-add DC extents in the device
++#
++# @path: CXL DCD canonical QOM path
++# @output: path of output file to dump the results to
++#
++# Since : 9.1
++##
++{ 'command': 'cxl-display-pending-to-add-dc-extents',
++  'data': { 'path': 'str',
++            'output': 'str'
++           }
++}
+-- 
+2.43.0
+
