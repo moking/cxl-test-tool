@@ -303,6 +303,23 @@ unload_cxl_driver() {
     sh_on_remote "lsmod"
 }
 
+find_dcd() {
+    cmd="cxl list | grep serial -B 1 | grep memdev | sed 's/,//'"
+    rs=`raw_sh_on_remote "$cmd"`
+    dev=`echo $rs | awk -F: '{print $2}'`
+    echo $dev
+}
+
+find_decoder() {
+    dev=`find_dcd`
+    if [ -z "$dev" ];then
+        echo ""
+    fi
+    cmd="cxl list -E -m $dev"
+    raw_sh_on_remote "$cmd" > /tmp/cxl-list
+    num=`cat /tmp/cxl-list | grep endpoint | awk -F: '{print $2}'| sed 's/,//' | sed 's/endpoint//'` 
+    echo $num
+}
 
 create_cxl_dc_region() {
     mod_loaded=`raw_sh_on_remote "lsmod | grep -c cxl_mem"`
@@ -310,16 +327,21 @@ create_cxl_dc_region() {
         load_cxl_driver
     fi
 
+    find_decoder
+    if [ -z "$num" ];then
+        echo "cannot find decoder, exit"
+        exit
+    fi
     echo_task "Create DC region"
     cmd_str="rid=0; \
           region=\$(cat /sys/bus/cxl/devices/decoder0.0/create_dc_region); \
           echo \$region > /sys/bus/cxl/devices/decoder0.0/create_dc_region; \
           echo 256 > /sys/bus/cxl/devices/\$region/interleave_granularity; \
           echo 1 > /sys/bus/cxl/devices/\$region/interleave_ways; \
-          echo dc\$rid >/sys/bus/cxl/devices/decoder2.0/mode; \
-          echo 0x40000000 >/sys/bus/cxl/devices/decoder2.0/dpa_size; \
+          echo dc\$rid >/sys/bus/cxl/devices/decoder$num.0/mode; \
+          echo 0x40000000 >/sys/bus/cxl/devices/decoder$num.0/dpa_size; \
           echo 0x40000000 > /sys/bus/cxl/devices/\$region/size; \
-          echo  decoder2.0 > /sys/bus/cxl/devices/\$region/target0; \
+          echo  decoder$num.0 > /sys/bus/cxl/devices/\$region/target0; \
           echo 1 > /sys/bus/cxl/devices/\$region/commit; \
           echo \$region > /sys/bus/cxl/drivers/cxl_region/bind"
     sh_on_remote "$cmd_str"
@@ -334,13 +356,13 @@ issue_qmp_cmd() {
         error "qmp port not found, check whether qemu is launched with qmp support"
         exit 1
     fi
-    echo_task "Install ncat tool on host"
+    #echo_task "Install ncat tool on host"
     sudo apt-get install ncat >&/dev/null
 
-    echo_task "execute qmp commands"
+    #echo_task "execute qmp commands"
     cat $qmp_file | ncat localhost $port
 
-    echo_task "execute qmp command completed"
+    #echo_task "execute qmp command completed"
 }
 
 reset_qemu() {
