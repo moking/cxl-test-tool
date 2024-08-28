@@ -437,6 +437,7 @@ help() {
     --create-ram-region \t Create a regular ram region for volatile memory mem0
     --disable-region \t\t disable a region (region0 by default)
     --destroy-region \t\t destroy a region (region0 by default)
+    --convert-dc-extents \t\t convert dc extents to system ram (after add extents)
     --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
     --try-mctp \t\t Try to test OOB mailbox with MCTP over I2C setup
     --install-ras \t\t Install rasdaemon tool
@@ -627,10 +628,31 @@ setup_cxl_memory() {
 
     sh_on_remote "cxl list -iu"
     region=$(find_region "create_pmem_region")
+
+    dax=`echo $region | sed 's/region/dax/'`
     sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 $memdev -s 512M --debug"
     sh_on_remote "ndctl create-namespace -m dax -r $region"
-    sh_on_remote "daxctl reconfigure-device --mode=system-ram --no-online dax0.0"
-    sh_on_remote "daxctl online-memory dax0.0"
+    sh_on_remote "daxctl reconfigure-device --mode=system-ram --no-online $dax.0"
+    sh_on_remote "daxctl online-memory $dax.0"
+    sh_on_remote "lsmem"
+}
+
+convert_dcd_to_system_ram() {
+    region=$1
+    if [ -z "$region" ];then
+        echo "No region of dcd for converting, exit"
+        exit
+    fi
+
+    dax=`raw_sh_on_remote "daxctl create-device $region" | grep "chardev"`
+    if [ -z "$dax" ];then
+        echo "Create dax device failed, exit"
+        exit
+    fi
+
+    dax=`echo $dax | awk -F: '{print $2}'|sed 's/,//'`
+    sh_on_remote "daxctl reconfigure-device --mode=system-ram --no-online $dax"
+    sh_on_remote "daxctl online-memory $dax"
     sh_on_remote "lsmem"
 }
 
@@ -1080,6 +1102,7 @@ parse_args() {
             --create-image) create_image=true ;;
             --cxl) test_cxl=true ;;
             --dcd-test) dcd_test "$2"; shift;;
+            --convert-dc-extents) convert_dcd_to_system_ram $2;;
             --image) image_name="$2"; shift ;;
             --install-ndctl) install_ndctl=true ;;
             --create-topo) gen_topo=true ;;
