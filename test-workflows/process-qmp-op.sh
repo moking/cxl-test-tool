@@ -90,9 +90,23 @@ print='
     }
     '
 
+dax_region=""
+
+find_dax_region(){
+    cxl-tool --cmd "find /sys/bus/cxl/devices/dax_region* |tail -1" | tail -1 > /tmp/region
+    path=`cat /tmp/region | tail -1`
+    echo $path
+}
+
+dax_region=$(find_dax_region)
+
+if [ -z "$dax_region" ];then
+    echo "no dax region found, exit"
+    exit
+fi
+
 show_extent_in_vm() {
-    path="/sys/bus/cxl/devices/dax_region0/"
-    cxl-tool --cmd "find $path -name extent*" > /tmp/vm-extent
+    cxl-tool --cmd "find $dax_region/ -name extent*" > /tmp/vm-extent
 
     echo "extent info on the VM"
     cat /tmp/vm-extent

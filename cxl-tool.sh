@@ -64,6 +64,11 @@ raw_sh_on_remote() {
     ssh root@localhost -p $ssh_port "$cmd"
 }
 
+ps_qemu_status() {
+    ps -ef | grep qemu-system
+    exit
+}
+
 copy_to_remote() {
     dst="/tmp/"
     if [ "$1" == "" ];then
@@ -357,7 +362,10 @@ issue_qmp_cmd() {
         exit 1
     fi
     #echo_task "Install ncat tool on host"
-    sudo apt-get install ncat >&/dev/null
+    rs=$(which ncat)
+    if [ -z "$rs" ];then
+        sudo apt-get install ncat >&/dev/null
+    fi
 
     #echo_task "execute qmp commands"
     cat $qmp_file | ncat localhost $port
@@ -423,6 +431,7 @@ help() {
     --qdb \t\t\t debug qemu with gdb, may need to launch gdb with -S option
     --kconfig \t\t\t configure kernel with make menuconfig
     --cxl-mem-setup \t\t set up cxl memory as regular memory and online
+    --dcd-test \t\t do dcd test (create region & add/release dc extents) without start/poweroff vm
     --create-dcR \t\t Create DC region before DC extents can be added
     --create-region \t\t Create a regular region for mem0
     --create-ram-region \t Create a regular ram region for volatile memory mem0
@@ -431,6 +440,7 @@ help() {
     --issue-qmp \t\t issue qmp command to VM for poison injection, dc extent add/release 
     --try-mctp \t\t Try to test OOB mailbox with MCTP over I2C setup
     --install-ras \t\t Install rasdaemon tool
+    --ps \t\t\t Show process status with ps to see if qemu is running
     -H,--help \t\t\t display help information
     '
 }
@@ -550,11 +560,32 @@ configure_kernel() {
     make menuconfig
 }
 
+find_vmem() {
+    cmd="cxl list -M | grep ram -B 1 | grep memdev | sed 's/,//'"
+    dev=`raw_sh_on_remote "$cmd"`
+    echo $dev | awk -F: '{print $2}'
+}
+
+find_pmem() {
+    cmd="cxl list -M | grep pmem -B 1 | grep memdev | sed 's/,//'"
+    dev=`raw_sh_on_remote "$cmd"`
+    echo $dev | awk -F: '{print $2}'
+}
+
+find_region() {
+    type=$1
+    path=/sys/bus/cxl/devices/decoder0.0/$type
+    raw_sh_on_remote "cat $path"
+}
+
 create_cxl_region() {
+    memdev="mem0"
     if [ "$1" == "" ];then
         mode="pmem"
+        memdev=$(find_pmem)
     else
         mode=$1
+        memdev=$(find_vmem)
     fi
     load_cxl_driver
 
@@ -587,9 +618,17 @@ disable_cxl_region() {
 setup_cxl_memory() {
     load_cxl_driver
 
+    memdev="mem0"
+    if [ "$1" != "" ];then
+        memdev=$1
+    else
+        memdev=`find_pmem`
+    fi
+
     sh_on_remote "cxl list -iu"
-    sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 mem0 -s 512M --debug"
-    sh_on_remote "ndctl create-namespace -m dax -r region0"
+    region=$(find_region "create_pmem_region")
+    sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 $memdev -s 512M --debug"
+    sh_on_remote "ndctl create-namespace -m dax -r $region"
     sh_on_remote "daxctl reconfigure-device --mode=system-ram --no-online dax0.0"
     sh_on_remote "daxctl online-memory dax0.0"
     sh_on_remote "lsmem"
@@ -996,6 +1035,12 @@ cxl_test() {
     setup_cxl_memory
 }
 
+dcd_test() {
+    cxl-tool --create-dcR
+    export `cat /tmp/.vars.config | grep "cxl_test_tool_dir"`
+    bash $cxl_test_tool_dir/test-workflows/process-qmp-op.sh "$1"
+}
+
 exec_cmd() {
     if [ ! -f /tmp/qemu-status ];then
         echo "Warning: qemu is not running, skip executing command!"
@@ -1034,6 +1079,7 @@ parse_args() {
             -MW|--monitor-wait) monitor_wait=true;;
             --create-image) create_image=true ;;
             --cxl) test_cxl=true ;;
+            --dcd-test) dcd_test "$2"; shift;;
             --image) image_name="$2"; shift ;;
             --install-ndctl) install_ndctl=true ;;
             --create-topo) gen_topo=true ;;
@@ -1058,6 +1104,7 @@ parse_args() {
             --kdb) kdb=true ;;
             --qdb) qdb=true ;;
             --ndb) ndb=true ; opt_nbd="$2"; shift;;
+            --ps) ps_qemu_status;;
             -F|--vars-file) opt_vars_file="$2"; shift;;
             --kconfig) kconfig=true;;
             --cxl-mem-setup) cxl_mem_setup=true;;
