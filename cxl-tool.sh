@@ -1076,6 +1076,7 @@ exec_cmd() {
             sh_on_remote "$cmd_str"
         fi
     fi
+    exit
 }
 
 set_default_options
@@ -1089,7 +1090,7 @@ parse_args() {
     while [[ "$#" -ne "0" ]]; do
         #echo "processing: $1"
         case "$1" in
-            -C|--cmd) cmd_str="$2"; shift ;;
+            -C|--cmd) exec_cmd "$2"; shift ;;
             -T|--topology) TOPO="$2"; shift ;;
             -N|--CPUS) num_cpus="$2"; shift ;;
             -E|--extra-opts) extra_opts="$2"; shift ;;
@@ -1275,10 +1276,6 @@ fi
 
 if $install_ndctl; then
     setup_ndctl $ndctl_url
-fi
-
-if [ -n "$cmd_str" ]; then
-    exec_cmd
 fi
 
 if $kdb; then
