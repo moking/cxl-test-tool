@@ -1068,6 +1068,7 @@ exec_cmd() {
     if [ ! -f /tmp/qemu-status ];then
         echo "Warning: qemu is not running, skip executing command!"
     fi
+    cmd_str="$1"
 
     running=`cat /tmp/qemu-status | grep -c "QEMU:running"`
     if [ $running -eq 0 ];then
