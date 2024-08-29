@@ -329,7 +329,7 @@ unload_cxl_driver() {
 }
 
 find_dcd() {
-    cmd="cxl list | grep serial -B 1 | grep memdev | sed 's/,//'"
+    cmd="cxl list | grep serial -B 1 | grep -m1 memdev | sed 's/,//'"
     rs=`raw_sh_on_remote "$cmd"`
     dev=`echo $rs | awk -F: '{print $2}'`
     echo $dev
@@ -339,11 +339,12 @@ find_decoder() {
     dev=`find_dcd`
     if [ -z "$dev" ];then
         echo ""
+    else
+        cmd="cxl list -E -m $dev"
+        raw_sh_on_remote "$cmd" > /tmp/cxl-list
+        num=`cat /tmp/cxl-list | grep endpoint | awk -F: '{print $2}'| sed 's/,//' | sed 's/endpoint//'`
+        echo $num
     fi
-    cmd="cxl list -E -m $dev"
-    raw_sh_on_remote "$cmd" > /tmp/cxl-list
-    num=`cat /tmp/cxl-list | grep endpoint | awk -F: '{print $2}'| sed 's/,//' | sed 's/endpoint//'` 
-    echo $num
 }
 
 create_cxl_dc_region() {
@@ -352,10 +353,10 @@ create_cxl_dc_region() {
         load_cxl_driver
     fi
 
-    find_decoder
+    num=`find_decoder`
     if [ -z "$num" ];then
         echo "cannot find decoder, exit"
-        exit
+        exit 1
     fi
     echo_task "Create DC region"
     cmd_str="rid=0; \
@@ -1079,7 +1080,7 @@ cxl_test() {
 }
 
 dcd_test() {
-    cxl-tool --create-dcR
+    create_cxl_dc_region
     export `cat /tmp/.vars.config | grep "cxl_test_tool_dir"`
     bash $cxl_test_tool_dir/test-workflows/process-qmp-op.sh "$1"
 }
