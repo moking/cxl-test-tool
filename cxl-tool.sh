@@ -187,6 +187,14 @@ FM="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=256M 
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=6,target=cxl-pmem2 \
  -device virtio-rng-pci,bus=swport1"
 
+qemu_vm_is_running() {
+    running=`ps -ef | grep qemu-system-x86_64 | grep -c raw`
+    if [ $running -gt 0 ];then
+        return 0
+    else
+        return 1
+    fi
+}
 run_qemu() {
     if [ "$1" != "" ];then
         topo="$1"
@@ -211,6 +219,17 @@ run_qemu() {
         wait_flag="wait"
     else
         wait_flag="nowait"
+    fi
+
+    if $(qemu_vm_is_running); then
+        echo -n "A Qemu VM is running, do you want to poweroff it first (Y/N)?"
+        read ans
+        if [ "$ans" == "Y" ]; then
+            cxl-tool --poweroff
+            sleep 2
+        else
+            exit
+        fi
     fi
 
     echo "${QEMU} -s \
@@ -251,8 +270,7 @@ run_qemu() {
     else
         sleep 5
     fi
-    running=`ps -ef | grep qemu-system-x86_64 | grep -c raw`
-    if [ $running -gt 0 ];then
+    if $(qemu_vm_is_running);then
         echo "QEMU:running" > /tmp/qemu-status
         echo "QEMU instance is up, access it: ssh root@localhost -p $ssh_port"
         rs=`same_file  $cxl_test_tool_dir/$default_vars_file /tmp/$default_vars_file`
@@ -269,15 +287,17 @@ run_qemu() {
 }
 
 shutdown_qemu() {
-    if [ ! -f /tmp/qemu-status ];then
+    if [ ! -f /tmp/qemu-status ]  || ! $(qemu_vm_is_running);then
         echo "Warning: qemu is not running, skip shutdown!"
+        exit
     fi
     running=`cat /tmp/qemu-status | grep -c "QEMU:running"`
     if [ $running -eq 0 ];then
-        echo "Warning: qemu is not running, skip shutdown!"
+        echo "Warning: qemu is not running as shown in qemu-status, skip shutdown!"
     else
-        sh_on_remote "poweroff"
-		if [ "$?" != "0" ];then
+        raw_sh_on_remote "poweroff"
+        sleep 1
+        if $(qemu_vm_is_running); then
             echo "execute poweroff on guest failed"
             exit
         fi
