@@ -227,7 +227,7 @@ run_qemu() {
         -monitor telnet:127.0.0.1:12345,server,$wait_flag \
         $extra_opts \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
-        -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
+        -virtfs local,path=/home/`whoami`,mount_tag=homeshare,security_model=mapped \
         $topo" > $cmd_file
 
     ${QEMU} -s $extra_opts \
@@ -243,7 +243,7 @@ run_qemu() {
         -drive file=${QEMU_IMG},index=0,media=disk,format=$format \
         -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
-        -virtfs local,path=/home/fan,mount_tag=homeshare,security_model=mapped \
+        -virtfs local,path=/home/`whoami`,mount_tag=homeshare,security_model=mapped \
         $topo 1>&/tmp/qemu.log &
 
     if [ "$accel_mode" == "kvm" ];then
@@ -714,8 +714,9 @@ create_qemu_image() {
     sudo mkdir $DIR/root/.ssh
     cat ~/.ssh/*.pub > /tmp/authorized_keys
     sudo cp /tmp/authorized_keys $DIR/root/.ssh/
+    echo nameserver 8.8.8.8  | sudo tee -a $DIR/etc/resolv.conf
 
-    echo_task "cp $/tmp/netplan-config.yaml $DIR/etc/netplan"
+    echo_task "cp /tmp/netplan-config.yaml $DIR/etc/netplan"
     sudo mkdir -p $DIR/etc/netplan/
     sudo cp /tmp/netplan-config.yaml $DIR/etc/netplan/config.yaml
     openvswitch-switch
