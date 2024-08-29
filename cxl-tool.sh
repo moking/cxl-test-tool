@@ -10,6 +10,9 @@ top_file=/tmp/topo.txt
 cmd_file=/tmp/cmd
 einj_file=""
 ssh_port="2024"
+dcd_last_used=""
+vmem_last_used=""
+pmem_last_used=""
 
 echo '
 rp=13
@@ -332,6 +335,7 @@ find_dcd() {
     cmd="cxl list | grep serial -B 1 | grep -m1 memdev | sed 's/,//'"
     rs=`raw_sh_on_remote "$cmd"`
     dev=`echo $rs | awk -F: '{print $2}'`
+    dcd_last_used=$dev
     echo $dev
 }
 
@@ -585,13 +589,15 @@ configure_kernel() {
 find_vmem() {
     cmd="cxl list -M | grep ram -B 1 | grep memdev | sed 's/,//'"
     dev=`raw_sh_on_remote "$cmd"`
-    echo $dev | awk -F: '{print $2}'
+    vmem_last_used=`echo $dev | awk -F: '{print $2}'`
+    echo $vmem_last_used
 }
 
 find_pmem() {
     cmd="cxl list -M | grep pmem -B 1 | grep memdev | sed 's/,//'"
     dev=`raw_sh_on_remote "$cmd"`
-    echo $dev | awk -F: '{print $2}'
+    pmem_last_used=`echo $dev | awk -F: '{print $2}'`
+    echo $pmem_last_used
 }
 
 find_region() {
@@ -1081,6 +1087,9 @@ cxl_test() {
 
 dcd_test() {
     create_cxl_dc_region
+    if [ "$?" != "0" ];then
+        exit 1
+    fi
     export `cat /tmp/.vars.config | grep "cxl_test_tool_dir"`
     bash $cxl_test_tool_dir/test-workflows/process-qmp-op.sh "$1"
 }
