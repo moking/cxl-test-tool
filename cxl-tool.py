@@ -8,7 +8,10 @@ import argparse
 import subprocess
 import psutil
 import time
+import signal
 from utils.terminal import login_vm as login_vm
+from utils.terminal import gdb_on_vm as gdb_on_vm
+from utils.debug import gdb_process as gdb_process
 from utils.cxl_topology_parser import gen_cxl_topology
 
 extra_opts=""
@@ -21,6 +24,7 @@ status_file="/tmp/qemu-status"
 run_log="/tmp/qemu.log"
 net_config="-netdev user,id=network0,hostfwd=tcp::%s-:22 -device e1000,netdev=network0"%ssh_port
 SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
+ndctl_dir="~/ndctl"
 
 RP1="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,size=512M \
      -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/tmp/lsa.raw,size=512M \
@@ -86,6 +90,17 @@ def write_to_file(file, s):
     with open(file, "w") as f:
         f.write(s)
 
+def process_id(name):
+    for process in psutil.process_iter(['name']):
+        try:
+            # Check if the process name matches
+            if name in process.info['name']: 
+                return process.pid
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            # Handle the cases where the process might terminate during iteration
+            continue
+    return -1
+
 def vm_is_running():
     """Check if any process with the given name is alive."""
     # Iterate over all running processes
@@ -141,6 +156,35 @@ def run_qemu(topo):
         print("Start Qemu failed, check /tmp/qemu.log for more information")
 
 
+def gdb_ndctl(cmd):
+    subdir=cmd.split()[0]
+    if not vm_is_running():
+        print("VM is not running, skip debug")
+        return
+    gdb_on_vm("cd %s; gdb --args ./build/%s/%s"%(ndctl_dir, subdir, cmd))
+
+def gdb_qemu():
+    #pid=sh_cmd("ps -ef | grep qemu-system | awk '{print $2}'")
+    pid=process_id("qemu-system")
+    if pid == -1:
+        print("Qemu process not found, try to run qemu first")
+        return
+    gdb_process(pid)
+
+def gdb_kernel():
+    if not vm_is_running:
+        print("VM is not running, skip debug")
+        return
+    path=os.getenv("KERNEL_ROOT")
+    original_sigint_handler = signal.getsignal(signal.SIGINT)
+    try:
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        subprocess.run(["gdb", "--tui", "%s/vmlinux"%path] )
+    finally:
+        signal.signal(signal.SIGINT, original_sigint_handler)
+
+
+
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
@@ -148,6 +192,9 @@ parser.add_argument('--login', help='login to the VM', action='store_true')
 parser.add_argument('--poweroff', help='poweroff the VM', action='store_true')
 parser.add_argument('--shutdown', help='poweroff the VM', action='store_true')
 parser.add_argument('-C','--cmd', help='command to execute on VM', required=False, default="")
+parser.add_argument('--ndb', help='gdb ndctl on VM', required=False, default="")
+parser.add_argument('--qdb', help='gdb qemu', action='store_true')
+parser.add_argument('--kdb', help='gdb kernel', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -155,6 +202,7 @@ user=sh_cmd("whoami")
 read_config(".vars.config")
 QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"                                   
 KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
+
 
 
 
@@ -174,3 +222,9 @@ if args["cmd"]:
     rs=execute_on_vm(args["cmd"])
     if rs:
         print(rs)
+if args["ndb"]:
+    gdb_ndctl(args["ndb"])
+if args["qdb"]:
+    gdb_qemu()
+if args["kdb"]:
+    gdb_kernel()
