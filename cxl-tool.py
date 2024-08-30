@@ -116,7 +116,15 @@ def vm_is_running():
     return False
 
 def execute_on_vm(cmd):
-    return sh_cmd("ssh root@localhost -p %s "%ssh_port+cmd)
+    return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd))
+
+def path_exist_on_vm(path):
+    cmd="if [ -d %s ]; then echo 1; else echo 0; fi"%(path)
+    rs = execute_on_vm(cmd)
+    if rs != "0":
+        return True
+    else:
+        return False
 
 def shutdown_vm():
     if vm_is_running():
@@ -156,11 +164,35 @@ def run_qemu(topo):
         print("Start Qemu failed, check /tmp/qemu.log for more information")
 
 
+def compile_ndctl(dir):
+    cmd = "cd %s;\
+        meson setup build;\
+        meson compile -C build;\
+        meson install -C build" %dir
+    print(cmd)
+    return execute_on_vm(cmd)
+
+def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
+    cmd= "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev 1>&/dev/null"
+    out=execute_on_vm(cmd)
+    print(out)
+    cmd="git clone %s %s"%(url, dir)
+    print(cmd)
+    out=execute_on_vm("git clone %s %s"%(url, dir))
+    print(out)
+    out=compile_ndctl(dir)
+    print(out)
+
+
 def gdb_ndctl(cmd):
     subdir=cmd.split()[0]
     if not vm_is_running():
         print("VM is not running, skip debug")
         return
+    if not path_exist_on_vm(ndctl_dir):
+        print("ndctl directory not found")
+        return
+
     gdb_on_vm("cd %s; gdb --args ./build/%s/%s"%(ndctl_dir, subdir, cmd))
 
 def gdb_qemu():
@@ -195,6 +227,7 @@ parser.add_argument('-C','--cmd', help='command to execute on VM', required=Fals
 parser.add_argument('--ndb', help='gdb ndctl on VM', required=False, default="")
 parser.add_argument('--qdb', help='gdb qemu', action='store_true')
 parser.add_argument('--kdb', help='gdb kernel', action='store_true')
+parser.add_argument('--install-ndctl', help='install ndctl on VM', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -202,9 +235,6 @@ user=sh_cmd("whoami")
 read_config(".vars.config")
 QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"                                   
 KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
-
-
-
 
 if args["create_topo"]:
     topo=gen_cxl_topology()
@@ -228,3 +258,7 @@ if args["qdb"]:
     gdb_qemu()
 if args["kdb"]:
     gdb_kernel()
+
+if args["install_ndctl"]:
+    ndctl_url=os.getenv("ndctl_url")
+    install_ndctl(dir=ndctl_dir)

@@ -64,7 +64,7 @@ def login_vm(hostname="localhost", port=2024, username="root"):
         # Open an interactive shell session
         ssh_session = ssh_client.invoke_shell()
 
-        ssh_session.send("clear\n")
+        ssh_session.send("\n")
         time.sleep(1)  # Wait for command execution
 
         # Read the command output
