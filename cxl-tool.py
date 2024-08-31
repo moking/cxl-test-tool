@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-import requests
 import os
 import subprocess
-import re
-import logging
 import argparse
 import subprocess
 import psutil
 import time
 import signal
+from utils.tools import sh_cmd as sh_cmd
+from utils.tools import bg_cmd as bg_cmd
+from utils.tools import append_to_file as append_to_file
+from utils.tools import write_to_file as write_to_file
+from utils.tools import process_id as process_id
+from utils.tools import execute_on_vm as execute_on_vm
+from utils.tools import path_exist_on_vm as path_exist_on_vm
 from utils.terminal import login_vm as login_vm
 from utils.terminal import gdb_on_vm as gdb_on_vm
 from utils.debug import gdb_process as gdb_process
@@ -71,36 +75,6 @@ def read_config(conf):
                 else:
                     os.environ[name]=new
 
-def sh_cmd(cmd):
-    output = subprocess.getoutput(cmd)
-    #print(cmd, " cmd out:", output)
-    return output
-
-def bg_cmd(cmd):
-    fd=open(run_log, "w")
-    process = subprocess.Popen(cmd, shell=True, stdout=fd, stderr=fd)  
-    time.sleep(2)
-    subprocess.run(['stty', 'sane'])
-
-def append_to_file(file, s):
-    with open(file, "a") as f:
-        f.write(s)
-
-def write_to_file(file, s):
-    with open(file, "w") as f:
-        f.write(s)
-
-def process_id(name):
-    for process in psutil.process_iter(['name']):
-        try:
-            # Check if the process name matches
-            if name in process.info['name']: 
-                return process.pid
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            # Handle the cases where the process might terminate during iteration
-            continue
-    return -1
-
 def vm_is_running():
     """Check if any process with the given name is alive."""
     # Iterate over all running processes
@@ -114,17 +88,6 @@ def vm_is_running():
             # Handle the cases where the process might terminate during iteration
             continue
     return False
-
-def execute_on_vm(cmd):
-    return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd))
-
-def path_exist_on_vm(path):
-    cmd="if [ -d %s ]; then echo 1; else echo 0; fi"%(path)
-    rs = execute_on_vm(cmd)
-    if rs != "0":
-        return True
-    else:
-        return False
 
 def shutdown_vm():
     if vm_is_running():
