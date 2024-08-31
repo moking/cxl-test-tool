@@ -1,6 +1,10 @@
 # cxl-test-tool: a tool to make cxl test with kernel and qemu setup easier
 
+* For feedback, please email nifan.cxl@gmail.com.
+* If you like the tool, please star it to attract more people's interests.
+
 # Recent important changes.
+****WIP: recently I started to move the code to python so it is easier to support more complicated use workflow. cxl-tool.py is the new main file.**
 <pre>
 1. Updated DCD test workflow;
 2. Add mctp setup;
