@@ -194,8 +194,13 @@ parser.add_argument('--kdb', help='gdb kernel', action='store_true')
 parser.add_argument('--install-ndctl', help='install ndctl on VM', action='store_true')
 parser.add_argument('--load-drv', help='install cxl driver on VM', action='store_true')
 parser.add_argument('--unload-drv', help='uninstall cxl driver on VM', action='store_true')
+parser.add_argument('--create-region', help='create cxl region', required=False, default="")
+parser.add_argument('--destroy-region', help='destroy cxl region', required=False, default="")
+
 
 args = vars(parser.parse_args())
+
+print(args)
 
 user=sh_cmd("whoami")
 read_config(".vars.config")
@@ -232,3 +237,7 @@ if args["load_drv"]:
     cxl.load_driver()
 if args["unload_drv"]:
     cxl.unload_driver()
+if args["create_region"]:
+    region=cxl.create_region(args["create_region"])
+if args["destroy_region"]:
+    cxl.destroy_region(args["destroy_region"])

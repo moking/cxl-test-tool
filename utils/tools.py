@@ -1,6 +1,7 @@
 import subprocess;
 import time
 import psutil
+import json
 
 def sh_cmd(cmd):
     output = subprocess.getoutput(cmd)
@@ -43,4 +44,17 @@ def path_exist_on_vm(path, port="2024"):
     else:
         return False
 
+def parse_json(file):
+    with open(file, 'r') as file:
+        # Parse the JSON data into a Python dictionary
+        data=[]
+        try:
+            data = json.load(file)
+        finally:
+            return data
 
+def output_to_json_data(output):
+    file="/tmp/tmp.json"
+    write_to_file(file, output)
+    data=parse_json(file)
+    return data
