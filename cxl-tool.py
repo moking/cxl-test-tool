@@ -6,6 +6,7 @@ import subprocess
 import psutil
 import time
 import signal
+import utils.cxl as cxl
 from utils.tools import sh_cmd as sh_cmd
 from utils.tools import bg_cmd as bg_cmd
 from utils.tools import append_to_file as append_to_file
@@ -191,6 +192,8 @@ parser.add_argument('--ndb', help='gdb ndctl on VM', required=False, default="")
 parser.add_argument('--qdb', help='gdb qemu', action='store_true')
 parser.add_argument('--kdb', help='gdb kernel', action='store_true')
 parser.add_argument('--install-ndctl', help='install ndctl on VM', action='store_true')
+parser.add_argument('--load-drv', help='install cxl driver on VM', action='store_true')
+parser.add_argument('--unload-drv', help='uninstall cxl driver on VM', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -225,3 +228,7 @@ if args["kdb"]:
 if args["install_ndctl"]:
     ndctl_url=os.getenv("ndctl_url")
     install_ndctl(dir=ndctl_dir)
+if args["load_drv"]:
+    cxl.load_driver()
+if args["unload_drv"]:
+    cxl.unload_driver()
