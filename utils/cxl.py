@@ -19,6 +19,8 @@ def find_mode(memdev):
     file="/tmp/tmp.json"
     rs=tools.execute_on_vm("cxl list -i -m %s"%memdev)
     data=tools.output_to_json_data(rs)
+    if not data:
+        return None
     for key in data[0].keys():
         if "_size" in key:
             return key.split("_")[0]
@@ -49,3 +51,27 @@ def destroy_region(region):
     print("# "+cmd)
     rs=tools.execute_on_vm(cmd)
     print(rs)
+
+def create_namespace(region):
+    if not region:
+        print("Cannot create namespace due to wrong region input")
+        return "ERROR"
+    cmd="ndctl create-namespace -m dax -r %s"%region
+    print(cmd)
+    output=tools.execute_on_vm(cmd)
+    print(output)
+
+    file="/tmp/tmp.json"
+    tools.write_to_file(file, output)
+    ns=""
+    dax=""
+    with open(file, "r") as f:
+        for line in f:
+            if "\"chardev\"" in line:
+                dax = line.split(":")[1].replace(",", "").strip()
+                break
+            if "\"dev\":" in line:
+                ns = line.split(":")[1].replace(",", "").strip()
+                
+        return ns,dax
+
