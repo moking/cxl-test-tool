@@ -4,12 +4,18 @@ import psutil
 import json
 
 def sh_cmd(cmd, echo=False):
+    if echo:
+        print(cmd)
     output = subprocess.getoutput(cmd)
     #print(cmd, " cmd out:", output)
     if echo:
-        print(cmd)
         print(output)
     return output
+
+def exec_shell_direct(cmd, echo=False):
+    if echo:
+        print(cmd)
+    subprocess.run(cmd, shell=True)
 
 def bg_cmd(cmd, run_log="/tmp/qemu.log", echo=False):
     fd=open(run_log, "w")

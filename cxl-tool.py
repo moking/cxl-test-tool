@@ -139,6 +139,7 @@ def compile_ndctl(dir):
 
 def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
     cmd= "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev 1>&/dev/null"
+    print(cmd)
     out=execute_on_vm(cmd)
     print(out)
     cmd="git clone %s %s"%(url, dir)
@@ -204,6 +205,148 @@ def setup_qemu(url, branch, qemu_dir):
     cmd="cd %s; make -j 16"%qemu_dir
     tools.sh_cmd(cmd, echo=True)
 
+def setup_kernel(url, branch, kernel_dir):
+    git_clone=True
+    if os.path.exists(kernel_dir):
+        print("%s exists, please take care of it first before proceeding"%kernel_dir)
+        cmd=input("Do you want to continue and skip git clone (Y/N):")
+        if not cmd:
+            cmd="Y"
+        if cmd.lower() == "y":
+            git_clone=False
+        else:
+            return
+    if git_clone:
+        cmd="git clone -b %s --single-branch %s %s"%(branch, url, kernel_dir)
+        tools.sh_cmd(cmd, echo=True)
+    else:
+        cmd=input("Want to pull updates from remote repo for branch %s (Y/N):"%branch)
+        if not cmd:
+            cmd="Y"
+        if cmd.lower() == "y":
+            cmd="git pull"
+            tools.sh_cmd(cmd, echo=True)
+
+    if os.path.exists("%s/.config"%kernel_dir):
+        rs=input("Found .config under %s, use it for kernel config without change (Y/N): "%kernel_dir)
+        if not rs:
+            rs="Y";
+        if rs.lower() == "n":
+            rs=input("Configure mannually (1) or copy the example config (2): ")
+            if not rs:
+                rs="1"
+            if rs == "1":
+                subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
+            elif rs == "2":
+                too_dir=os.getenv("cxl_test_tool_dir").stri("\"")
+                cmd="cp %s/kconfig.example %s/.config"%(tool_dir, kernel_dir)
+                tools.sh_cmd(cmd, echo=True)
+            else:
+                print("Unknown choice, exit")
+                return
+    else:
+        rs=input(".config not found, configure mannually (1) or copy the example config (2): ")
+        if not rs:
+            rs="1"
+        if rs == "1":
+            subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
+        elif rs == "2":
+            cmd="cp %s/kconfig.example %s/.config"%(os.getenv("cxl_test_tool_dir"), kernel_dir)
+            tools.sh_cmd(cmd, echo=True)
+        else:
+            print("Unknown choice, exit")
+            return
+
+    tools.exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
+    tools.exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+
+
+def create_qemu_image(img_path):
+    if not img_path:
+        print("No qemu image path given")
+        return
+    if os.path.exists(img_path):
+
+        rs=input("File already exists, wait to create again (Y/N):")
+        if not rs or rs.lower() != "y":
+           return
+    else:
+        tools.exec_shell_direct("dir=$(dirname %s); mkdir -p $dir"%img_path)
+
+    cmd='''network:
+    version: 2
+    renderer: networkd
+    ethernets:
+        enp0s2:
+            dhcp4: true
+    '''
+    file="/tmp/netplan-config.yaml"
+    write_to_file(file, cmd)
+    sh_cmd("chmod 600  %s"%file)
+    qemu_tool=os.getenv("QEMU_ROOT") + "/build/qemu-img"
+    if not os.path.exists(qemu_tool):
+        print("qemu-img tool not found")
+        return
+
+    cmd="%s create %s 16g"%(qemu_tool, img_path)
+    tools.exec_shell_direct(cmd)
+    cmd="sudo mkfs.ext4 %s"%img_path
+    tools.exec_shell_direct(cmd, echo=True)
+    tmp_dir="/tmp/img_dir"
+    cmd="mkdir -p %s"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo mount -o loop %s %s"%(img_path, tmp_dir)
+    tools.exec_shell_direct(cmd, echo=True)
+
+    print("Starting to debootstrap for the VM")
+    cmd="sudo debootstrap --arch amd64 stable %s"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="Copy ssh key to guest to skip password login later"
+    print(cmd)
+    cmd="sudo mkdir %s/root/.ssh"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="cat ~/.ssh/*.pub > /tmp/authorized_keys"
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo cp /tmp/authorized_keys %s/root/.ssh/"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="echo nameserver 8.8.8.8  | sudo tee -a %s/etc/resolv.conf"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+
+    cmd="sudo mkdir -p %s/etc/netplan/"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo cp /tmp/netplan-config.yaml %s/etc/netplan/config.yaml"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+
+    whoami=sh_cmd("whoami")
+    rc="/tmp/rc.local"
+    write_to_file(rc, '''#! /bin/bash
+stty rows 80 cols 132
+mount -t 9p -o trans=virtio homeshare /home/%s
+mount -t 9p -o trans=virtio modshare /lib/modules
+'''%whoami)
+    cmd="chmod a+x %s"%rc
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo cp /tmp/rc.local %s/etc/"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo mkdir -p %s/home/%s"%(tmp_dir,whoami)
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo mkdir -p %s/lib/modules/"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+
+    cmd="sudo chroot %s passwd -d root"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo chroot %s apt-get update"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo chroot %s apt-get install -y ssh netplan.io openvswitch-switch"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo umount %s"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+
+    cmd="ssh-keygen -f ~/.ssh/known_hosts -R [localhost]:2024"
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="ls %s -lh"%img_path
+    tools.exec_shell_direct(cmd, echo=True)
+
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
@@ -221,11 +364,9 @@ parser.add_argument('--create-region', help='create cxl region', required=False,
 parser.add_argument('--destroy-region', help='destroy cxl region', required=False, default="")
 parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
 parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
-
+parser.add_argument('--create-image', help='create a qemu image', action='store_true')
 
 args = vars(parser.parse_args())
-
-print(args)
 
 user=sh_cmd("whoami")
 read_config(".vars.config")
@@ -234,6 +375,10 @@ KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
 if args["setup_qemu"]:
     setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
+if args["setup_kernel"]:
+    setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
+if args["create_image"]:
+    create_qemu_image(img_path=os.getenv("QEMU_IMG"))
 
 if args["create_topo"]:
     topo=gen_cxl_topology()
