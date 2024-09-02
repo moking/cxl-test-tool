@@ -159,7 +159,7 @@ def gdb_ndctl(cmd):
         print("ndctl directory not found")
         return
 
-    gdb_on_vm("cd %s; gdb --args ./build/%s/%s"%(ndctl_dir, subdir, cmd))
+    gdb_on_vm("gdb --args %s/build/%s/%s"%(ndctl_dir, subdir, cmd))
 
 def gdb_qemu():
     #pid=sh_cmd("ps -ef | grep qemu-system | awk '{print $2}'")
@@ -347,6 +347,61 @@ mount -t 9p -o trans=virtio modshare /lib/modules
     cmd="ls %s -lh"%img_path
     tools.exec_shell_direct(cmd, echo=True)
 
+def cxl_pmem_test(memdev):
+    if not vm_is_running():
+        print("VM is not running, skip")
+        return
+    if not path_exist_on_vm(ndctl_dir):
+        ndctl_url=os.getenv("ndctl_url")
+        install_ndctl(url=ndctl_url, dir=ndctl_dir)
+
+    out=execute_on_vm("lsmod|grep -c cxl_pmem")
+    if out == "0":
+        cxl.load_driver()
+
+    mode = cxl.find_mode(memdev)
+    if mode != "pmem":
+        print("%s is not pmem dev"%memdev)
+        return
+    region=cxl.create_region(memdev)
+    time.sleep(1)
+    if not region:
+        return
+    (ns, dax) = cxl.create_namespace(region)
+    if not dax:
+        print("Create namespace failed")
+        return
+    cmd="daxctl reconfigure-device --mode=system-ram --no-online %s"%dax
+    out = execute_on_vm(cmd)
+    print(out)
+    cmd = "daxctl online-memory %s"%dax
+    out = execute_on_vm(cmd)
+    print(out)
+    cmd="lsmem"
+    out = execute_on_vm(cmd)
+    print(out)
+
+def cxl_vmem_test(memdev):
+    if not vm_is_running():
+        print("VM is not running, skip")
+        return
+    if not path_exist_on_vm(ndctl_dir):
+        ndctl_url=os.getenv("ndctl_url")
+        install_ndctl(url=ndctl_url, dir=ndctl_dir)
+
+    out=execute_on_vm("lsmod|grep -c cxl_pmem")
+    if out == "0":
+        cxl.load_driver()
+
+    mode = cxl.find_mode(memdev)
+    if mode != "ram":
+        print("%s is not volatile cxl memdev"%memdev)
+        return
+    region=cxl.create_region(memdev)
+    cmd="lsmem"
+    out = execute_on_vm(cmd)
+    print(out)
+
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
@@ -365,6 +420,8 @@ parser.add_argument('--destroy-region', help='destroy cxl region', required=Fals
 parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
 parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
 parser.add_argument('--create-image', help='create a qemu image', action='store_true')
+parser.add_argument('--cxl-pmem-test', help='online pmem as system ram', required=False, default="")
+parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', required=False, default="")
 
 args = vars(parser.parse_args())
 
@@ -405,7 +462,7 @@ if args["kdb"]:
 
 if args["install_ndctl"]:
     ndctl_url=os.getenv("ndctl_url")
-    install_ndctl(dir=ndctl_dir)
+    install_ndctl(url=ndctl_url, dir=ndctl_dir)
 if args["load_drv"]:
     cxl.load_driver()
 if args["unload_drv"]:
@@ -414,3 +471,7 @@ if args["create_region"]:
     region=cxl.create_region(args["create_region"])
 if args["destroy_region"]:
     cxl.destroy_region(args["destroy_region"])
+if args["cxl_pmem_test"]:
+    cxl_pmem_test(args["cxl_pmem_test"])
+if args["cxl_vmem_test"]:
+    cxl_vmem_test(args["cxl_vmem_test"])

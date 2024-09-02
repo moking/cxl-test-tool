@@ -26,15 +26,55 @@ def find_mode(memdev):
             return key.split("_")[0]
     return "dc"
 
+def find_key_in_json_data(data, key):
+    res=[]
+    if not data or not key:
+        return []
+    for d in data:
+        for k in d.keys():
+            if k == key:
+                res.append(d[k])
+            elif isinstance(d[k], list):
+                rs = find_key_in_json_data(d[k], key)
+                if rs:
+                    for i in rs:
+                        res.append(i)
+    return res
+
+def region_exists_for_device(memdev):
+    cmd="cxl list -Ri"
+    rs=tools.execute_on_vm(cmd)
+    json=tools.output_to_json_data(rs)
+    #print(rs)
+    regions=find_key_in_json_data(json, "region")
+    if not regions:
+        return ""
+
+    for region in regions:
+        cmd="cxl list -v -r %s"%region
+        rs=tools.execute_on_vm(cmd)
+        json=tools.output_to_json_data(rs)
+
+        rs=find_key_in_json_data(json, "memdev")
+        if memdev in rs:
+            return region
+    return ""
+
+
 def create_region(memdev):
     file="/tmp/tmp.json"
+
+    region=region_exists_for_device(memdev)
+    if region:
+        print("%s already created for %s, exit"%(region, memdev))
+        return ""
 
     mode=find_mode(memdev)
     cmd="cxl create-region -m -d decoder0.0 -w 1 %s -s 512M -t %s"%(memdev, mode)
     print("# "+cmd)
     output=tools.execute_on_vm(cmd)
     print(output)
-    
+
     tools.write_to_file(file, output)
     with open(file, "r") as f:
         for line in f:
@@ -55,7 +95,7 @@ def destroy_region(region):
 def create_namespace(region):
     if not region:
         print("Cannot create namespace due to wrong region input")
-        return "ERROR"
+        return "",""
     cmd="ndctl create-namespace -m dax -r %s"%region
     print(cmd)
     output=tools.execute_on_vm(cmd)
@@ -75,3 +115,11 @@ def create_namespace(region):
                 
         return ns,dax
 
+def destroy_namespace(ns):
+    if not ns:
+        print("Cannot delete namespace due to wrong namespace input")
+        return "ERROR"
+    cmd="cxl destroy-namespace %s -f"%(ns)
+    print("# "+cmd)
+    rs=tools.execute_on_vm(cmd)
+    print(rs)
