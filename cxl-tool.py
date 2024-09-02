@@ -7,6 +7,7 @@ import psutil
 import time
 import signal
 import utils.cxl as cxl
+import utils.tools as tools
 from utils.tools import sh_cmd as sh_cmd
 from utils.tools import bg_cmd as bg_cmd
 from utils.tools import append_to_file as append_to_file
@@ -179,7 +180,29 @@ def gdb_kernel():
     finally:
         signal.signal(signal.SIGINT, original_sigint_handler)
 
+def setup_qemu(url, branch, qemu_dir):
+    git_clone=True
+    if os.path.exists(qemu_dir):
+        print("%s exists, please take care of it first before proceeding"%qemu_dir)
+        cmd=input("Do you want to continue and skip git clone (Y/N):")
+        if cmd.lower() == "y":
+            git_clone=False
+        else:
+            return
+    package_str="libglib2.0-dev libgcrypt20-dev zlib1g-dev \
+        autoconf automake libtool bison flex libpixman-1-dev bc\
+        make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
+        libcap-ng-dev libattr1-dev libslirp-dev libslirp0 python3-venv"
 
+    tools.install_packages(package_str)
+    if git_clone:
+        cmd="git clone -b %s --single-branch %s %s"%(branch, url, qemu_dir)
+        rs=tools.sh_cmd(cmd, echo=True)
+        print(rs)
+    cmd="cd %s;./configure --target-list=x86_64-softmmu --enable-debug"%(qemu_dir)
+    tools.sh_cmd(cmd, echo=True)
+    cmd="cd %s; make -j 16"%qemu_dir
+    tools.sh_cmd(cmd, echo=True)
 
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
@@ -196,6 +219,8 @@ parser.add_argument('--load-drv', help='install cxl driver on VM', action='store
 parser.add_argument('--unload-drv', help='uninstall cxl driver on VM', action='store_true')
 parser.add_argument('--create-region', help='create cxl region', required=False, default="")
 parser.add_argument('--destroy-region', help='destroy cxl region', required=False, default="")
+parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
+parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
 
 
 args = vars(parser.parse_args())
@@ -206,6 +231,9 @@ user=sh_cmd("whoami")
 read_config(".vars.config")
 QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"                                   
 KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
+
+if args["setup_qemu"]:
+    setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
 
 if args["create_topo"]:
     topo=gen_cxl_topology()

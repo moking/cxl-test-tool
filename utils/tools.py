@@ -3,16 +3,50 @@ import time
 import psutil
 import json
 
-def sh_cmd(cmd):
+def sh_cmd(cmd, echo=False):
     output = subprocess.getoutput(cmd)
     #print(cmd, " cmd out:", output)
+    if echo:
+        print(cmd)
+        print(output)
     return output
 
-def bg_cmd(cmd, run_log="/tmp/qemu.log"):
+def bg_cmd(cmd, run_log="/tmp/qemu.log", echo=False):
     fd=open(run_log, "w")
+    if echo:
+        print(cmd)
     process = subprocess.Popen(cmd, shell=True, stdout=fd, stderr=fd)  
     time.sleep(2)
     subprocess.run(['stty', 'sane'])
+
+def package_installed(package):
+    if not package:
+        return False
+    cmd="apt-cache policy %s | grep -w Installed"%package
+    rs=sh_cmd(cmd)
+    if rs:
+        version=rs.split(":")[1].strip()
+        if "none" in version:
+            return False
+        return True
+    else:
+        return False
+
+def install_packages(package_str):
+    cmd="sudo apt-get install -y %s"%package_str
+    packages=[]
+    for i in package_str.split():
+        if not package_installed(i):
+            packages.append(i)
+    if not packages:
+        print("All packages are already installed, skip installing!")
+        return;
+    rs=sh_cmd(" ".join(packages))
+    for i in packages:
+        if not package_installed(i):
+            print("%s not installed"%i)
+            return
+    print("All packages installed successfully")
 
 def append_to_file(file, s):
     with open(file, "a") as f:
