@@ -123,3 +123,57 @@ def destroy_namespace(ns):
     print("# "+cmd)
     rs=tools.execute_on_vm(cmd)
     print(rs)
+
+def find_endpoint_num(memdev):
+    cmd="cxl list -E -m %s"%memdev
+    out=tools.execute_on_vm(cmd)
+    data = tools.output_to_json_data(out)
+    if not data:
+        print("Cannot found decoder for %s"%memdev)
+        return ""
+    return data[0]["endpoint"].replace("endpoint", "")
+
+def create_dc_region(memdev):
+    if not memdev:
+        return ""
+
+    mode=find_mode(memdev)
+    if mode != "dc":
+        print("%s is not DCD device, skip"%memdev)
+        return ""
+
+    region=region_exists_for_device(memdev)
+    if region:
+        print("%s already created for %s, exit"%(region, memdev))
+        return ""
+
+    num=find_endpoint_num(memdev)
+    rid="dc0"
+    cmd="cat /sys/bus/cxl/devices/decoder0.0/create_dc_region"
+    region=tools.execute_on_vm(cmd)
+    if not region:
+        print("read create_dc_region failed, abort")
+        return ""
+    cmd_str='''\
+      echo %s > /sys/bus/cxl/devices/decoder0.0/create_dc_region; \
+      echo 256 > /sys/bus/cxl/devices/%s/interleave_granularity; \
+      echo 1 > /sys/bus/cxl/devices/%s/interleave_ways; \
+      echo %s >/sys/bus/cxl/devices/decoder%s.0/mode; \
+      echo 0x40000000 >/sys/bus/cxl/devices/decoder%s.0/dpa_size; \
+      echo 0x40000000 > /sys/bus/cxl/devices/%s/size; \
+      echo  decoder%s.0 > /sys/bus/cxl/devices/%s/target0; \
+      echo 1 > /sys/bus/cxl/devices/%s/commit;  \
+      echo %s > /sys/bus/cxl/drivers/cxl_region/bind\
+      '''%(region, region, region, rid, num, num, region, num, region, region, region)
+
+    cmds=cmd_str.split(";")
+    for cmd in cmds:
+        cmd=cmd.strip()
+        tools.execute_on_vm(cmd, echo=True)
+
+    cmd="cxl list -r %s"%region
+    output=tools.execute_on_vm(cmd, echo=True)
+    if tools.output_to_json_data(output):
+        print("DC region %s created for %s"%(region, memdev))
+    return region
+

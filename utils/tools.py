@@ -17,6 +17,12 @@ def exec_shell_direct(cmd, echo=False):
         print(cmd)
     subprocess.run(cmd, shell=True)
 
+def exec_shell_remote_direct(cmd, ssh_port="2024", echo=False):
+    cmd="ssh root@localhost -p %s \"%s\""%(ssh_port,cmd)
+    if echo:
+        print(cmd)
+    subprocess.run(cmd, shell=True)
+
 def bg_cmd(cmd, run_log="/tmp/qemu.log", echo=False):
     fd=open(run_log, "w")
     if echo:
@@ -73,8 +79,8 @@ def process_id(name):
             continue
     return -1
 
-def execute_on_vm(cmd, ssh_port="2024"):
-    return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd))
+def execute_on_vm(cmd, ssh_port="2024", echo=False):
+    return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd), echo=echo)
 
 def path_exist_on_vm(path, port="2024"):
     cmd="if [ -d %s ]; then echo 1; else echo 0; fi"%(path)

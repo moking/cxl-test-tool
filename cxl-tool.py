@@ -422,6 +422,7 @@ parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
 parser.add_argument('--create-image', help='create a qemu image', action='store_true')
 parser.add_argument('--cxl-pmem-test', help='online pmem as system ram', required=False, default="")
 parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', required=False, default="")
+parser.add_argument('--create-dcR', help='create a dc Region for a memdev', required=False, default="")
 
 args = vars(parser.parse_args())
 
@@ -475,3 +476,5 @@ if args["cxl_pmem_test"]:
     cxl_pmem_test(args["cxl_pmem_test"])
 if args["cxl_vmem_test"]:
     cxl_vmem_test(args["cxl_vmem_test"])
+if args["create_dcR"]:
+    cxl.create_dc_region(args["create_dcR"])
