@@ -1,4 +1,5 @@
 import utils.tools as tools
+import psutil;
 def load_driver(user="root", host="localhost", port="2024"):
     tools.execute_on_vm("modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem")
     tools.execute_on_vm("modprobe -a nd_pmem")
@@ -14,6 +15,41 @@ def unload_driver(user="root", host="localhost", port="2024"):
 
     rs=tools.execute_on_vm("lsmod")
     print(rs)
+
+def cxl_driver_loaded():
+    cmd="cxl list -i"
+    rs=tools.execute_on_vm(cmd)
+    data = tools.output_to_json_data(rs)
+    if not data:
+        return False
+    return True
+
+def find_serial(memdev):
+    cmd = "cxl list -m %s -i"%memdev
+    rs=tools.execute_on_vm(cmd)
+    if not rs:
+        return ""
+    data = tools.output_to_json_data(rs)
+    return data[0]["serial"]
+
+def find_cmdline_device_id(memdev):
+    name="qemu-system"
+    serial=find_serial(memdev)
+    key="sn=%s"%serial
+    print(key)
+    for process in psutil.process_iter(['name', 'cmdline']):
+        try:
+            # Check if the process name matches
+            if name in process.info['name']:
+                cmd=process.info['cmdline']
+                for c in cmd:
+                    if "dc-region" in c and key in c:
+                        args=c.split(",")
+                        for arg in args:
+                            if arg.strip().startswith("id"):
+                                return arg.split("=")[1]
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue;
 
 def find_mode(memdev):
     file="/tmp/tmp.json"
@@ -133,6 +169,29 @@ def find_endpoint_num(memdev):
         return ""
     return data[0]["endpoint"].replace("endpoint", "")
 
+def create_dax_device(region, echo=False):
+    if not region:
+        return ""
+
+    cmd="daxctl create-device -r %s"%region
+    if echo:
+        print(cmd)
+    rs=tools.execute_on_vm(cmd)
+    if echo:
+        print(rs)
+    cmd="daxctl list -r %s -D"%region
+    if echo:
+        print(cmd)
+    rs=tools.execute_on_vm(cmd)
+    if echo:
+        print(rs)
+    data=tools.output_to_json_data(rs)
+    if not data:
+        return ""
+
+    return data[0]["chardev"]
+
+
 def create_dc_region(memdev):
     if not memdev:
         return ""
@@ -144,8 +203,8 @@ def create_dc_region(memdev):
 
     region=region_exists_for_device(memdev)
     if region:
-        print("%s already created for %s, exit"%(region, memdev))
-        return ""
+        print("%s already created for %s, return directly"%(region, memdev))
+        return region
 
     num=find_endpoint_num(memdev)
     rid="dc0"
@@ -176,4 +235,3 @@ def create_dc_region(memdev):
     if tools.output_to_json_data(output):
         print("DC region %s created for %s"%(region, memdev))
     return region
-

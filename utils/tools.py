@@ -104,3 +104,34 @@ def output_to_json_data(output):
     write_to_file(file, output)
     data=parse_json(file)
     return data
+
+def qmp_port():
+    name="qemu-system"
+    key="qmp"
+    for process in psutil.process_iter(['name', 'cmdline']):
+        try:
+            # Check if the process name matches
+            if name in process.info['name']:
+                found=False
+                cmd=process.info['cmdline']
+                for c in cmd:
+                    if found:
+                        #ATTENTION: depends on how cmdline looks like
+                        return c.split(":")[-1].split(",")[0]
+                    if key in c:
+                        found=True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue;
+
+def issue_qmp_cmd(file):
+    if not file:
+        print("No qmp input file")
+        return
+
+    port=qmp_port()
+
+    if not package_installed("ncat"):
+        install_packages("ncat")
+
+    cmd="cat %s|ncat localhost %s"%(file, port)
+    sh_cmd(cmd, echo=True)

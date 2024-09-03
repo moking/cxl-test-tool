@@ -7,6 +7,7 @@ import psutil
 import time
 import signal
 import utils.cxl as cxl
+import utils.dcd as dcd
 import utils.tools as tools
 from utils.tools import sh_cmd as sh_cmd
 from utils.tools import bg_cmd as bg_cmd
@@ -36,7 +37,7 @@ RP1="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,
      -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/tmp/lsa.raw,size=512M \
      -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1 \
      -device cxl-rp,port=0,bus=cxl.1,id=root_port13,chassis=0,slot=2 \
-     -device cxl-type3,bus=root_port13,memdev=cxl-mem1,lsa=cxl-lsa1,id=cxl-pmem0 \
+     -device cxl-type3,bus=root_port13,memdev=cxl-mem1,lsa=cxl-lsa1,id=cxl-pmem0,sn=0xabcd \
      -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=8k"
 
 topo=RP1
@@ -355,8 +356,7 @@ def cxl_pmem_test(memdev):
         ndctl_url=os.getenv("ndctl_url")
         install_ndctl(url=ndctl_url, dir=ndctl_dir)
 
-    out=execute_on_vm("lsmod|grep -c cxl_pmem")
-    if out == "0":
+    if not cxl.cxl_driver_loaded():
         cxl.load_driver()
 
     mode = cxl.find_mode(memdev)
@@ -389,8 +389,7 @@ def cxl_vmem_test(memdev):
         ndctl_url=os.getenv("ndctl_url")
         install_ndctl(url=ndctl_url, dir=ndctl_dir)
 
-    out=execute_on_vm("lsmod|grep -c cxl_pmem")
-    if out == "0":
+    if not cxl_driver_loaded():
         cxl.load_driver()
 
     mode = cxl.find_mode(memdev)
@@ -401,6 +400,41 @@ def cxl_vmem_test(memdev):
     cmd="lsmem"
     out = execute_on_vm(cmd)
     print(out)
+
+def dcd_test(memdev):
+    if not vm_is_running():
+        print("VM is not running, skip")
+        return
+
+    if not path_exist_on_vm(ndctl_dir):
+        ndctl_url=os.getenv("ndctl_url")
+        install_ndctl(url=ndctl_url, dir=ndctl_dir)
+
+    if not cxl.cxl_driver_loaded():
+        print("Load cxl drivers first")
+        cxl.load_driver()
+
+    region=cxl.create_dc_region(memdev)
+    if not region:
+        print("Create DC region failed")
+        return
+
+    dev=cxl.find_cmdline_device_id(memdev)
+    print(dev)
+    dcd.handle_dc_extents_op(memdev)
+
+    ans=input("Do you want to continue to create dax device for DC(Y/N):")
+    if not ans or ans.lower() == "n":
+        return
+    dax=cxl.create_dax_device(region, echo=True)
+    if not dax:
+        print("Create dax device failed")
+        return
+    cmd="daxctl reconfigure-device %s -m system-ram"%dax
+    execute_on_vm(cmd, echo=True)
+    cmd="lsmem"
+    rs=execute_on_vm(cmd)
+    print(rs)
 
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
@@ -423,6 +457,8 @@ parser.add_argument('--create-image', help='create a qemu image', action='store_
 parser.add_argument('--cxl-pmem-test', help='online pmem as system ram', required=False, default="")
 parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', required=False, default="")
 parser.add_argument('--create-dcR', help='create a dc Region for a memdev', required=False, default="")
+parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', required=False, default="")
+parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
 
 args = vars(parser.parse_args())
 
@@ -478,3 +514,7 @@ if args["cxl_vmem_test"]:
     cxl_vmem_test(args["cxl_vmem_test"])
 if args["create_dcR"]:
     cxl.create_dc_region(args["create_dcR"])
+if args["dcd_test"]:
+    dcd_test(args["dcd_test"])
+if args["issue_qmp"]:
+    tools.issue_qmp_cmd(args["issue_qmp"])
