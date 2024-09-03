@@ -13,6 +13,8 @@ us_port=0
 ds_port=0
 num_hb_found=0
 
+serial=0xf00
+
 def create_object(name, size="512M", path="/tmp"):
     return name, "-object memory-backend-file,id=%s,share=on,mem-path=%s/%s.raw,size=%s "%(name,path,name,size)
 
@@ -35,29 +37,34 @@ def create_cxl_rp(bus="cxl.1"):
 
 def create_cxl_pmem(parent_dport, size="512M"):
     global mem_id
+    global serial
     hmem, hmem_str=create_object("hmem%s"%mem_id, size=size)
     lsa, lsa_str=create_object("lsa%s"%mem_id)
     name = "cxl-memdev%s"%mem_id
-    mem_str= "-device cxl-type3,bus=%s,memdev=%s,lsa=%s,id=cxl-memdev%s "%(parent_dport, hmem, lsa, mem_id)
+    mem_str= "-device cxl-type3,bus=%s,memdev=%s,lsa=%s,id=cxl-memdev%s,sn=%s "%(parent_dport, hmem, lsa, mem_id, serial)
     mem_id += 1
+    serial += 1
 
     return name, hmem_str+lsa_str+mem_str
 
 def create_cxl_vmem(parent_dport, size="512M"):
     global mem_id
+    global serial
     hmem, hmem_str=create_object("hmem%s"%mem_id, size=size)
     name = "cxl-memdev%s"%mem_id
-    mem_str= "-device cxl-type3,bus=%s,volatile-memdev=%s,id=cxl-vmemdev%s "%(parent_dport, hmem, mem_id)
+    mem_str= "-device cxl-type3,bus=%s,volatile-memdev=%s,id=cxl-vmemdev%s,sn=%s "%(parent_dport, hmem, mem_id, serial)
     mem_id += 1
+    serial += 1
 
     return name, hmem_str+mem_str
 
 def create_cxl_mem(parent_dport, pmem=True, vmem=False, dcd=False):
     global mem_id
+    global serial
     prefix= "-device cxl-type3,bus=%s,"%parent_dport
     lsa, lsa_str=create_object("lsa%s"%mem_id)
-    name = "cxl-memdev%s "%mem_id
-    suffix="id=%s"%name
+    name = "cxl-memdev%s"%mem_id
+    suffix="id=%s,sn=%s "%(name,serial)
     hmem_str=""
     vhmem_str=""
     dhmem_str=""
@@ -75,6 +82,7 @@ def create_cxl_mem(parent_dport, pmem=True, vmem=False, dcd=False):
         dcd_str="volatile-dc-memdev=%s,num-dc-regions=2,"%dhmem
 
     mem_id += 1
+    serial += 1
     return name, hmem_str+vhmem_str+dhmem_str+lsa_str+prefix+pmem_str+vmem_str+dcd_str+suffix
 
 
