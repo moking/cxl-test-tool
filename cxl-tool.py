@@ -168,6 +168,11 @@ def gdb_qemu():
     if pid == -1:
         print("Qemu process not found, try to run qemu first")
         return
+    cmd="cat /proc/sys/kernel/yama/ptrace_scope"
+    rs=sh_cmd(cmd)
+    if rs == "1":
+        cmd="echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope"
+        rs=sh_cmd(cmd)
     gdb_process(pid)
 
 def gdb_kernel():
