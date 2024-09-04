@@ -4,6 +4,8 @@ import subprocess
 import argparse
 import subprocess
 import psutil
+import shutil
+import filecmp
 import time
 import signal
 import utils.cxl as cxl
@@ -508,7 +510,17 @@ parser.add_argument('--mctp-try', help='try mctp test', action='store_true')
 args = vars(parser.parse_args())
 
 user=sh_cmd("whoami")
-read_config(".vars.config")
+tmp_config="/tmp/.vars.config"
+config=".vars.config"
+if os.path.exists(config):
+    read_config(config)
+    if not os.path.exists(tmp_config) or not filecmp.cmp(config, tmp_config):
+        shutil.copy(config, tmp_config)
+elif os.path.exists(tmp_config):
+    read_config(tmp_config)
+else:
+    print("No .vars.config file found")
+    exit(1)
 QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"                                   
 KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
