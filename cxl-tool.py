@@ -9,6 +9,7 @@ import signal
 import utils.cxl as cxl
 import utils.dcd as dcd
 import utils.tools as tools
+import utils.mctp as mctp
 from utils.tools import sh_cmd as sh_cmd
 from utils.tools import bg_cmd as bg_cmd
 from utils.tools import append_to_file as append_to_file
@@ -39,6 +40,25 @@ RP1="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,
      -device cxl-rp,port=0,bus=cxl.1,id=root_port13,chassis=0,slot=2 \
      -device cxl-type3,bus=root_port13,memdev=cxl-mem1,lsa=cxl-lsa1,id=cxl-pmem0,sn=0xabcd \
      -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=8k"
+
+FM="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=256M \
+ -object memory-backend-file,id=cxl-lsa1,mem-path=/tmp/t3_lsa1.raw,size=1M \
+ -object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,size=512M \
+ -object memory-backend-file,id=cxl-lsa2,mem-path=/tmp/t3_lsa2.raw,size=1M \
+ -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1,hdm_for_passthrough=true \
+ -device cxl-rp,port=0,bus=cxl.1,id=cxl_rp_port0,chassis=0,slot=2 \
+ -device cxl-upstream,port=2,sn=1234,bus=cxl_rp_port0,id=us0,addr=0.0,multifunction=on, \
+ -device cxl-switch-mailbox-cci,bus=cxl_rp_port0,addr=0.1,target=us0 \
+ -device cxl-downstream,port=0,bus=us0,id=swport0,chassis=0,slot=4 \
+ -device cxl-downstream,port=1,bus=us0,id=swport1,chassis=0,slot=5 \
+ -device cxl-downstream,port=3,bus=us0,id=swport2,chassis=0,slot=6 \
+ -device cxl-type3,bus=swport0,memdev=cxl-mem1,id=cxl-pmem1,lsa=cxl-lsa1,sn=3 \
+ -device cxl-type3,bus=swport2,memdev=cxl-mem2,id=cxl-pmem2,lsa=cxl-lsa2,sn=4 \
+ -machine cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=1k \
+ -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=4,target=us0 \
+ -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=5,target=cxl-pmem1 \
+ -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=6,target=cxl-pmem2 \
+ -device virtio-rng-pci,bus=swport1"
 
 topo=RP1
 
@@ -251,7 +271,7 @@ def setup_kernel(url, branch, kernel_dir):
             if rs == "1":
                 subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
             elif rs == "2":
-                too_dir=os.getenv("cxl_test_tool_dir").stri("\"")
+                tool_dir=os.getenv("cxl_test_tool_dir").strip("\"")
                 cmd="cp %s/kconfig.example %s/.config"%(tool_dir, kernel_dir)
                 tools.sh_cmd(cmd, echo=True)
             else:
@@ -482,6 +502,8 @@ parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', require
 parser.add_argument('--create-dcR', help='create a dc Region for a memdev', required=False, default="")
 parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', required=False, default="")
 parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
+parser.add_argument('--mctp-setup', help='setup mctp test software', action='store_true')
+parser.add_argument('--mctp-try', help='try mctp test', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -546,3 +568,9 @@ if args["dcd_test"]:
     dcd_test(args["dcd_test"])
 if args["issue_qmp"]:
     tools.issue_qmp_cmd(args["issue_qmp"])
+
+cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
+if args["mctp_setup"]:
+    mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
+if args["mctp_try"]:
+    mctp.try_fmapi_test()

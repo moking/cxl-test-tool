@@ -31,6 +31,12 @@ def bg_cmd(cmd, run_log="/tmp/qemu.log", echo=False):
     time.sleep(2)
     subprocess.run(['stty', 'sane'])
 
+def copy_to_remote(src, dst="/tmp/", user="root", host="localhost", port="2024"):
+    if not src:
+        return;
+    cmd="scp -r -P %s %s %s@%s:%s 2>&1 1>/dev/null"%(port, src, user, host, dst)
+    sh_cmd(cmd, echo=True)
+
 def package_installed(package):
     if not package:
         return False
@@ -61,6 +67,32 @@ def install_packages(package_str):
             return
     print("All packages installed successfully")
 
+def package_installed_on_vm(package):
+    if not package:
+        return False
+    cmd="apt-cache policy %s | grep -w Installed"%package
+    rs=execute_on_vm(cmd)
+    if rs:
+        version=rs.split(":")[1].strip()
+        if "none" in version:
+            return False
+        return True
+    else:
+        return False
+
+
+def install_packages_on_vm(package_str, user="root", host="localhost", port="2024"):
+    packages=[]
+    for i in package_str.split():
+        if not package_installed_on_vm(i):
+            packages.append(i)
+    if not packages:
+        print("All packages are already installed on VM, skip installing!")
+        return;
+    cmd="apt-get install -y %s"%" ".join(packages)
+    rs=execute_on_vm(cmd)
+    print(rs)
+
 def append_to_file(file, s):
     with open(file, "a") as f:
         f.write(s)
@@ -84,7 +116,7 @@ def execute_on_vm(cmd, ssh_port="2024", echo=False):
     return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd), echo=echo)
 
 def path_exist_on_vm(path, port="2024"):
-    cmd="if [ -d %s ]; then echo 1; else echo 0; fi"%(path)
+    cmd="if [ -e %s ]; then echo 1; else echo 0; fi"%(path)
     rs = execute_on_vm(cmd, ssh_port=port)
     if rs != "0":
         return True
