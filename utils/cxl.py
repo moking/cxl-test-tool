@@ -116,6 +116,10 @@ def region_exists_for_device(memdev):
 def create_region(memdev):
     file="/tmp/tmp.json"
 
+    if not cxl_driver_loaded():
+        print("Load cxl drivers")
+        load_driver();
+
     region=region_exists_for_device(memdev)
     if region:
         print("%s already created for %s, exit"%(region, memdev))
