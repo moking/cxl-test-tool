@@ -45,7 +45,6 @@ def package_installed(package):
         return False
 
 def install_packages(package_str):
-    cmd="sudo apt-get install -y %s"%package_str
     packages=[]
     for i in package_str.split():
         if not package_installed(i):
@@ -53,7 +52,9 @@ def install_packages(package_str):
     if not packages:
         print("All packages are already installed, skip installing!")
         return;
-    rs=sh_cmd(" ".join(packages))
+    cmd="sudo apt-get install -y %s"%" ".join(packages)
+    print(cmd)
+    rs=sh_cmd(cmd)
     for i in packages:
         if not package_installed(i):
             print("%s not installed"%i)

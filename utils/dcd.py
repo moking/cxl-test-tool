@@ -122,7 +122,8 @@ def handle_dc_extents_op(memdev):
             tools.issue_qmp_cmd(f)
         elif choice == "2":
             f=create_display_extents_qmp_input(dev)
-            os.remove(extent_file)
+            if os.path.exists(extent_file):
+                os.remove(extent_file)
             tools.issue_qmp_cmd(f)
             show_dc_extents()
 

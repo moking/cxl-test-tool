@@ -24,6 +24,22 @@ def cxl_driver_loaded():
         return False
     return True
 
+def device_is_active(memdev):
+    cmd="cxl list -i -m %s"%memdev
+    rs=tools.execute_on_vm(cmd)
+    data = tools.output_to_json_data(rs)
+    for key in data[0].keys():
+        if key == "state":
+            if data[0][key] == "disabled":
+                return False;
+            else:
+                return True;
+    return False
+
+def enable_memdev(memdev):
+    cmd="cxl enable-memdev %s"%memdev
+    rs=tools.execute_on_vm(cmd, echo=True)
+
 def find_serial(memdev):
     cmd = "cxl list -m %s -i"%memdev
     rs=tools.execute_on_vm(cmd)
@@ -104,6 +120,9 @@ def create_region(memdev):
     if region:
         print("%s already created for %s, exit"%(region, memdev))
         return ""
+
+    if not device_is_active(memdev):
+        enable_memdev(memdev)
 
     mode=find_mode(memdev)
     cmd="cxl create-region -m -d decoder0.0 -w 1 %s -s 512M -t %s"%(memdev, mode)
@@ -196,6 +215,9 @@ def create_dc_region(memdev):
     if not memdev:
         return ""
 
+    if not device_is_active(memdev):
+        enable_memdev(memdev)
+
     mode=find_mode(memdev)
     if mode != "dc":
         print("%s is not DCD device, skip"%memdev)
@@ -207,6 +229,9 @@ def create_dc_region(memdev):
         return region
 
     num=find_endpoint_num(memdev)
+    if not num:
+        print("Cannot find endpoint, exit")
+        return ""
     rid="dc0"
     cmd="cat /sys/bus/cxl/devices/decoder0.0/create_dc_region"
     region=tools.execute_on_vm(cmd)
