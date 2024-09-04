@@ -13,6 +13,9 @@ import utils.dcd as dcd
 import utils.tools as tools
 import utils.mctp as mctp
 import utils.ras as ras
+from utils.tools import run_qemu as run_qemu
+from utils.tools import shutdown_vm as shutdown_vm
+from utils.tools import vm_is_running as vm_is_running
 from utils.tools import sh_cmd as sh_cmd
 from utils.tools import bg_cmd as bg_cmd
 from utils.tools import append_to_file as append_to_file
@@ -103,57 +106,6 @@ def read_config(conf):
                 else:
                     os.environ[name]=new
 
-def vm_is_running():
-    """Check if any process with the given name is alive."""
-    # Iterate over all running processes
-    name="qemu-system"
-    for process in psutil.process_iter(['name']):
-        try:
-            # Check if the process name matches
-            if name in process.info['name']: 
-                return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            # Handle the cases where the process might terminate during iteration
-            continue
-    return False
-
-def shutdown_vm():
-    if vm_is_running():
-        execute_on_vm("poweroff")
-        time.sleep(2)
-        if not vm_is_running():
-            print("VM is powerered off")
-    else:
-        print("No VM is alive, skip shutdown")
-
-def run_qemu(topo):
-    if vm_is_running():
-        print("VM is running, exit")
-        return;
-    
-    print("Starting VM...")
-    bin=QEMU
-    cmd=" -s "+extra_opts+ " -kernel "+KERNEL_PATH+" -append "+os.getenv("KERNEL_CMD")+ \
-            " -smp " +num_cpus+ \
-            " -accel "+accel_mode + \
-            " -serial mon:stdio "+ \
-            " -nographic " + \
-            " "+SHARED_CFG+" "+ net_config + " "+\
-            " -monitor telnet:127.0.0.1:12345,server,"+wait_flag+\
-            " -drive file="+os.getenv("QEMU_IMG")+",index=0,media=disk,format="+format+\
-            " -machine q35,cxl=on -m 8G,maxmem=32G,slots=8 "+ \
-            " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
-            " -virtfs local,path=/home/"+user+",mount_tag=homeshare,security_model=mapped "+ topo
-
-    write_to_file("/tmp/run-cmd", cmd)
-    bg_cmd(bin+cmd)
-    if vm_is_running():
-        write_to_file(status_file, "QEMU:running")
-        print("QEMU instance is up, access it: ssh root@localhost -p %s"%ssh_port)
-    else:
-        write_to_file(status_file, "")
-        print("Start Qemu failed, check /tmp/qemu.log for more information")
-
 
 def compile_ndctl(dir):
     cmd = "cd %s;\
@@ -174,7 +126,6 @@ def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
     print(out)
     out=compile_ndctl(dir)
     print(out)
-
 
 def gdb_ndctl(cmd):
     subdir=cmd.split()[0]
@@ -211,101 +162,6 @@ def gdb_kernel():
         subprocess.run(["gdb", "--tui", "%s/vmlinux"%path] )
     finally:
         signal.signal(signal.SIGINT, original_sigint_handler)
-
-def setup_qemu(url, branch, qemu_dir):
-    git_clone=True
-    if os.path.exists(qemu_dir):
-        print("%s exists, please take care of it first before proceeding"%qemu_dir)
-        cmd=input("Do you want to continue and skip git clone (Y/N):")
-        if cmd.lower() == "y":
-            git_clone=False
-        else:
-            return
-    package_str="libglib2.0-dev libgcrypt20-dev zlib1g-dev \
-        autoconf automake libtool bison flex libpixman-1-dev bc\
-        make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
-        libcap-ng-dev libattr1-dev libslirp-dev libslirp0 python3-venv"
-
-    tools.install_packages(package_str)
-    if git_clone:
-        cmd="git clone -b %s --single-branch %s %s"%(branch, url, qemu_dir)
-        rs=tools.sh_cmd(cmd, echo=True)
-        print(rs)
-    cmd="cd %s;./configure --target-list=x86_64-softmmu --enable-debug"%(qemu_dir)
-    tools.sh_cmd(cmd, echo=True)
-    cmd="cd %s; make -j 16"%qemu_dir
-    tools.sh_cmd(cmd, echo=True)
-
-def build_qemu(url, branch, qemu_dir):
-    if not os.path.exists(qemu_dir):
-        print("No qemu source code found, may need run --setup-qemu")
-        return
-    cmd="cd %s; make -j 16"%qemu_dir
-    tools.sh_cmd(cmd, echo=True)
-
-def setup_kernel(url, branch, kernel_dir):
-    git_clone=True
-    if os.path.exists(kernel_dir):
-        print("%s exists, please take care of it first before proceeding"%kernel_dir)
-        cmd=input("Do you want to continue and skip git clone (Y/N):")
-        if not cmd:
-            cmd="Y"
-        if cmd.lower() == "y":
-            git_clone=False
-        else:
-            return
-    if git_clone:
-        cmd="git clone -b %s --single-branch %s %s"%(branch, url, kernel_dir)
-        tools.sh_cmd(cmd, echo=True)
-    else:
-        cmd=input("Want to pull updates from remote repo for branch %s (Y/N):"%branch)
-        if not cmd:
-            cmd="Y"
-        if cmd.lower() == "y":
-            cmd="git pull"
-            tools.sh_cmd(cmd, echo=True)
-
-    if os.path.exists("%s/.config"%kernel_dir):
-        rs=input("Found .config under %s, use it for kernel config without change (Y/N): "%kernel_dir)
-        if not rs:
-            rs="Y";
-        if rs.lower() == "n":
-            rs=input("Configure mannually (1) or copy the example config (2): ")
-            if not rs:
-                rs="1"
-            if rs == "1":
-                subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
-            elif rs == "2":
-                tool_dir=os.getenv("cxl_test_tool_dir").strip("\"")
-                cmd="cp %s/kconfig.example %s/.config"%(tool_dir, kernel_dir)
-                tools.sh_cmd(cmd, echo=True)
-            else:
-                print("Unknown choice, exit")
-                return
-    else:
-        rs=input(".config not found, configure mannually (1) or copy the example config (2): ")
-        if not rs:
-            rs="1"
-        if rs == "1":
-            subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
-        elif rs == "2":
-            cmd="cp %s/kconfig.example %s/.config"%(os.getenv("cxl_test_tool_dir"), kernel_dir)
-            tools.sh_cmd(cmd, echo=True)
-        else:
-            print("Unknown choice, exit")
-            return
-
-    tools.exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
-    tools.exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
-
-def build_kernel(url, branch, kernel_dir):
-    if not os.path.exists(kernel_dir):
-        print("No kernel source code found, may need run --setup-kernel")
-        return
-    cmd="cd %s; make -j 16"%kernel_dir
-    tools.exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
-    tools.exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
-
 
 
 def create_qemu_image(img_path):
@@ -482,9 +338,18 @@ def dcd_test(memdev):
     rs=execute_on_vm(cmd)
     print(rs)
 
+def find_topology(top):
+    if top.upper() == "RP1":
+        return RP1
+    elif top.upper() == "FM":
+        return FM
+    else:
+        return ""
+
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-v','--verbose', help='show more message', action='store_true')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
+parser.add_argument('-T','--topo', help='cxl topology to use', required=False, default="")
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
 parser.add_argument('--login', help='login to the VM', action='store_true')
 parser.add_argument('--poweroff', help='poweroff the VM', action='store_true')
@@ -535,22 +400,28 @@ QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"
 KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
 if args["setup_qemu"]:
-    setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
+    tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
 if args["setup_kernel"]:
-    setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
+    tools.setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
 if args["build_qemu"]:
-    build_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
+    tools.build_qemu(qemu_dir=os.getenv("QEMU_ROOT"))
 if args["build_kernel"]:
-    build_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
+    tools.build_kernel(kernel_dir=os.getenv("KERNEL_ROOT"))
 
 if args["create_image"]:
     create_qemu_image(img_path=os.getenv("QEMU_IMG"))
+
+if args["topo"]:
+    topo = find_topology(args["topo"])
+    if not topo:
+        print("No CXL topology given, use -T or --create-topo")
+        exit(1)
 
 if args["create_topo"]:
     topo=gen_cxl_topology()
 
 if args["run"]:
-    run_qemu(topo)
+    run_qemu(qemu=QEMU, topo=topo)
 
 if args["login"]:
     login_vm()
@@ -601,3 +472,5 @@ if args["install_ras_tools"]:
     ras.install_ras_tools();
 if args["inject_aer"]:
     ras.inject_aer(args["inject_aer"])
+
+mctp.run()

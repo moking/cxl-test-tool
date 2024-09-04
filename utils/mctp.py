@@ -1,4 +1,6 @@
 import utils.tools as tools
+import os
+import shutil;
 
 def install_mctp_pkg():
     print("install mctp program")
@@ -35,5 +37,29 @@ def try_fmapi_test():
     cmd="cd %s; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"%test_dir
     tools.execute_on_vm(cmd, echo=True)
 
+def run():
+    url="https://github.com/torvalds/linux"
+    branch="v6.6-rc6"
+    dire=os.path.expanduser("~/cxl/linux-%s"%branch)
 
+    test_dir=os.getenv("cxl_test_tool_dir").strip("\"")
+    kconfig=test_dir+"/test-workflows/mctp/kernel.config"
+    tools.setup_kernel(url=url, branch=branch, kernel_dir=dire, kconfig=kconfig)
 
+    key="i2c-aspeed"
+    cmd="cd %s; git log -n 1 | grep -c %s"%(dire, key)
+    if tools.sh_cmd(cmd) == "0":
+        print("Apply mctp patches ...")
+        kpatch=test_dir+"/test-workflows/mctp/mctp-patches-kernel.patch"
+        cmd="cd %s; git am --reject %s"%(dire, kpatch)
+        tools.sh_cmd(cmd, echo=True)
+        tools.build_kernel(dire)
+    else:
+        print("mctp patches already applied, continue...")
+
+    qemu_dir=os.getenv("QEMU_ROOT")
+    QEMU=qemu_dir+"/build/qemu-system-x86_64"                                   
+    qpatch=test_dir+"/test-workflows/mctp/mctp-patches-qemu.patch"
+    cmd="cd %s; git am --reject %s"%(qemu_dir, qpatch)
+    tools.sh_cmd(cmd, echo=True)
+    
