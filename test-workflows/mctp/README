@@ -1,4 +1,6 @@
 1. Apply mctp-patches-kernel.patch to kernel 6.6-rc6;
+url=https://github.com/torvalds/linux
+branch=v6.6-rc6
 2. Compile the kernel with config file (kernel.config);
 3. Apply mctp-patches-qemu.patch to mainstream qemu before compile it.
 4. run cxl-tool --run -T fm
