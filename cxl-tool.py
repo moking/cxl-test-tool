@@ -389,7 +389,7 @@ def cxl_vmem_test(memdev):
         ndctl_url=os.getenv("ndctl_url")
         install_ndctl(url=ndctl_url, dir=ndctl_dir)
 
-    if not cxl_driver_loaded():
+    if not cxl.cxl_driver_loaded():
         cxl.load_driver()
 
     mode = cxl.find_mode(memdev)
