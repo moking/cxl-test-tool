@@ -12,6 +12,7 @@ import utils.cxl as cxl
 import utils.dcd as dcd
 import utils.tools as tools
 import utils.mctp as mctp
+import utils.ras as ras
 from utils.tools import sh_cmd as sh_cmd
 from utils.tools import bg_cmd as bg_cmd
 from utils.tools import append_to_file as append_to_file
@@ -95,6 +96,8 @@ def read_config(conf):
                     has_quote=True
                     val=val.strip("\"")
                 new=expend_variable(val)
+                user=sh_cmd("whoami")
+                new=new.replace("~", "/home/"+user)
                 if has_quote:
                     os.environ[name]="\""+new+"\""
                 else:
@@ -480,6 +483,7 @@ def dcd_test(memdev):
     print(rs)
 
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
+parser.add_argument('-v','--verbose', help='show more message', action='store_true')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
 parser.add_argument('--login', help='login to the VM', action='store_true')
@@ -506,8 +510,14 @@ parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', require
 parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
 parser.add_argument('--mctp-setup', help='setup mctp test software', action='store_true')
 parser.add_argument('--mctp-try', help='try mctp test', action='store_true')
+# ras related commands
+parser.add_argument('--install-ras-tools', help='install ras related tool', action='store_true')
+parser.add_argument('--inject-aer', help='inject aer', required=False, default="")
 
 args = vars(parser.parse_args())
+
+if args["verbose"]:
+    print(args)
 
 user=sh_cmd("whoami")
 tmp_config="/tmp/.vars.config"
@@ -586,3 +596,8 @@ if args["mctp_setup"]:
     mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
 if args["mctp_try"]:
     mctp.try_fmapi_test()
+
+if args["install_ras_tools"]:
+    ras.install_ras_tools();
+if args["inject_aer"]:
+    ras.inject_aer(args["inject_aer"])
