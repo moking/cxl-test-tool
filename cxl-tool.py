@@ -206,6 +206,13 @@ def setup_qemu(url, branch, qemu_dir):
     cmd="cd %s; make -j 16"%qemu_dir
     tools.sh_cmd(cmd, echo=True)
 
+def build_qemu(url, branch, qemu_dir):
+    if not os.path.exists(qemu_dir):
+        print("No qemu source code found, may need run --setup-qemu")
+        return
+    cmd="cd %s; make -j 16"%qemu_dir
+    tools.sh_cmd(cmd, echo=True)
+
 def setup_kernel(url, branch, kernel_dir):
     git_clone=True
     if os.path.exists(kernel_dir):
@@ -260,6 +267,15 @@ def setup_kernel(url, branch, kernel_dir):
 
     tools.exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
     tools.exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+
+def build_kernel(url, branch, kernel_dir):
+    if not os.path.exists(kernel_dir):
+        print("No kernel source code found, may need run --setup-kernel")
+        return
+    cmd="cd %s; make -j 16"%kernel_dir
+    tools.exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
+    tools.exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+
 
 
 def create_qemu_image(img_path):
@@ -453,6 +469,8 @@ parser.add_argument('--create-region', help='create cxl region', required=False,
 parser.add_argument('--destroy-region', help='destroy cxl region', required=False, default="")
 parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
 parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
+parser.add_argument('-BQ', '--build-qemu', help='build qemu', action='store_true')
+parser.add_argument('-BK', '--build-kernel', help='build kernel', action='store_true')
 parser.add_argument('--create-image', help='create a qemu image', action='store_true')
 parser.add_argument('--cxl-pmem-test', help='online pmem as system ram', required=False, default="")
 parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', required=False, default="")
@@ -471,6 +489,11 @@ if args["setup_qemu"]:
     setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
 if args["setup_kernel"]:
     setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
+if args["build_qemu"]:
+    build_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
+if args["build_kernel"]:
+    build_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
+
 if args["create_image"]:
     create_qemu_image(img_path=os.getenv("QEMU_IMG"))
 
