@@ -28,7 +28,7 @@ from utils.terminal import gdb_on_vm as gdb_on_vm
 from utils.debug import gdb_process as gdb_process
 from utils.cxl_topology_parser import gen_cxl_topology
 
-dctl_dir="~/ndctl"
+ndctl_dir="~/ndctl"
 
 RP1="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,size=512M \
      -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/tmp/lsa.raw,size=512M \
@@ -149,7 +149,8 @@ def gdb_kernel():
     original_sigint_handler = signal.getsignal(signal.SIGINT)
     try:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        subprocess.run(["gdb", "--tui", "%s/vmlinux"%path] )
+        cmd="cd %s; gdb --tui ./vmlinux"%path
+        subprocess.run(cmd, shell=True)
     finally:
         signal.signal(signal.SIGINT, original_sigint_handler)
 
