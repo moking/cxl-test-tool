@@ -28,17 +28,7 @@ from utils.terminal import gdb_on_vm as gdb_on_vm
 from utils.debug import gdb_process as gdb_process
 from utils.cxl_topology_parser import gen_cxl_topology
 
-extra_opts=""
-wait_flag="nowait"
-format="raw"
-num_cpus="8"
-accel_mode="kvm"
-ssh_port="2024"
-status_file="/tmp/qemu-status"
-run_log="/tmp/qemu.log"
-net_config="-netdev user,id=network0,hostfwd=tcp::%s-:22 -device e1000,netdev=network0"%ssh_port
-SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
-ndctl_dir="~/ndctl"
+dctl_dir="~/ndctl"
 
 RP1="-object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest.raw,size=512M \
      -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/tmp/lsa.raw,size=512M \
@@ -421,7 +411,7 @@ if args["create_topo"]:
     topo=gen_cxl_topology()
 
 if args["run"]:
-    run_qemu(qemu=QEMU, topo=topo)
+    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)
 
 if args["login"]:
     login_vm()
@@ -472,5 +462,3 @@ if args["install_ras_tools"]:
     ras.install_ras_tools();
 if args["inject_aer"]:
     ras.inject_aer(args["inject_aer"])
-
-mctp.run()

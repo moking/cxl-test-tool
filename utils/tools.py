@@ -208,8 +208,6 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
             git_clone=False
         else:
             return
-    else:
-        print("not found")
     if git_clone:
         cmd="git clone -b %s --single-branch %s %s"%(branch, url, kernel_dir)
         sh_cmd(cmd, echo=True)
@@ -297,14 +295,26 @@ def shutdown_vm():
     else:
         print("No VM is alive, skip shutdown")
 
-def run_qemu(qemu, topo):
+extra_opts=""
+wait_flag="nowait"
+format="raw"
+num_cpus="8"
+accel_mode="kvm"
+ssh_port="2024"
+status_file="/tmp/qemu-status"
+run_log="/tmp/qemu.log"
+net_config="-netdev user,id=network0,hostfwd=tcp::%s-:22 -device e1000,netdev=network0"%ssh_port
+SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
+
+def run_qemu(qemu, topo, kernel):
+    user=sh_cmd("whoami")
     if vm_is_running():
         print("VM is running, exit")
         return;
     
     print("Starting VM...")
-    bin=QEMU
-    cmd=" -s "+extra_opts+ " -kernel "+KERNEL_PATH+" -append "+os.getenv("KERNEL_CMD")+ \
+    bin=qemu
+    cmd=" -s "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
             " -serial mon:stdio "+ \
