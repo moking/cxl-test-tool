@@ -336,6 +336,7 @@ parser.add_argument('--mctp-try', help='try mctp test', action='store_true')
 parser.add_argument('--install-ras-tools', help='install ras related tool', action='store_true')
 parser.add_argument('--inject-aer', help='inject aer', required=False, default="")
 parser.add_argument('--test-fm', help='run FMAPI test workflow', action='store_true')
+parser.add_argument('--test-libcxlmi', help='run libcxlmi test workflow', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -370,7 +371,7 @@ if args["create_image"]:
     create_qemu_image(img_path=os.getenv("QEMU_IMG"))
 
 if args["topo"]:
-    topo = tools.find_topology(args["topo"])
+    topo = cxl.find_topology(args["topo"])
     if not topo:
         print("No CXL topology given, use -T or --create-topo")
         exit(1)
@@ -432,3 +433,6 @@ if args["inject_aer"]:
     ras.inject_aer(args["inject_aer"])
 if args["test_fm"]:
     mctp.run_fm_test()
+if args["test_libcxlmi"]:
+    mctp.run_libcxlmi_test()
+

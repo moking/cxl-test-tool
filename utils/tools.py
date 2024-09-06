@@ -114,9 +114,15 @@ def process_id(name):
     return -1
 
 def execute_on_vm(cmd, ssh_port="2024", echo=False):
+    if not vm_is_running():
+        print("VM is not running, exit")
+        return ""
     return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd), echo=echo)
 
 def path_exist_on_vm(path, port="2024"):
+    if not vm_is_running():
+        print("VM is not running, exit")
+        return False
     cmd="if [ -e %s ]; then echo 1; else echo 0; fi"%(path)
     rs = execute_on_vm(cmd, ssh_port=port)
     if rs != "0":

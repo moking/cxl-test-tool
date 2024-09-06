@@ -38,7 +38,7 @@ def try_fmapi_test():
     cmd="cd %s; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"%test_dir
     tools.execute_on_vm(cmd, echo=True)
 
-def run_fm_test():
+def prepare_fm_test(topo="FM"):
     url="https://github.com/torvalds/linux"
     branch="v6.6-rc6"
     dire=os.path.expanduser("~/cxl/linux-%s"%branch)
@@ -69,5 +69,36 @@ def run_fm_test():
     #qpatch=test_dir+"/test-workflows/mctp/mctp-patches-qemu.patch"
     #cmd="cd %s; git am --reject %s"%(qemu_dir, qpatch)
     #tools.sh_cmd(cmd, echo=True)
-    topo=cxl.find_topology("fm")
+    topo=cxl.find_topology(topo)
     tools.run_qemu(qemu=QEMU,topo=topo, kernel=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage")
+    cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
+    mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
+
+def run_fm_test():
+    prepare_fm_test()
+    try_fmapi_test()
+
+def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main", target_dir="~/libcxlmi"):
+    git_clone=True
+    if not tools.vm_is_running():
+        prepare_fm_test(topo="FM_DCD")
+    if tools.path_exist_on_vm(target_dir):
+        rs=input("%s already exist, do you want to remove it before proceeding (Y/N): "%target_dir)
+        if rs and rs.lower() == "y":
+            cmd="rm -rf %s"%target_dir
+            tools.execute_on_vm(cmd, echo=True)
+        else:
+            git_clone=False
+    if git_clone:
+        cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
+        tools.execute_on_vm(cmd, echo=True)
+        tools.install_packages_on_vm("meson libdbus-1-dev")
+        cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
+        tools.execute_on_vm(cmd, echo=True)
+    else:
+        cmd="cd %s; meson compile -C build;"%target_dir
+        tools.execute_on_vm(cmd, echo=True)
+
+
+
+    
