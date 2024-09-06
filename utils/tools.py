@@ -173,25 +173,35 @@ def issue_qmp_cmd(file):
 def setup_qemu(url, branch, qemu_dir):
     git_clone=True
     qemu_dir=os.path.expanduser(qemu_dir)
-    if os.path.exists(qemu_dir):
-        print("%s exists, please take care of it first before proceeding"%qemu_dir)
-        cmd=input("Do you want to continue and skip git clone (Y/N):")
-        if cmd.lower() == "y":
-            git_clone=False
-        else:
-            return
+    if not qemu_dir:
+        return
+
     package_str="libglib2.0-dev libgcrypt20-dev zlib1g-dev \
         autoconf automake libtool bison flex libpixman-1-dev bc\
         make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
         libcap-ng-dev libattr1-dev libslirp-dev libslirp0 python3-venv"
 
     install_packages(package_str)
+
+    if os.path.exists(qemu_dir):
+        print("%s exists, please take care of it first before proceeding"%qemu_dir)
+        cmd=input("Do you want to delete the directory and continue (Y/N):")
+        if cmd and cmd.lower() == "y":
+            rs=input("Do you want to continue to delete (Y/N): ")
+            if rs and rs.lower() == "y":
+                cmd = "rm -rf %s"%qemu_dir
+                sh_cmd(cmd, echo = True)
+            else:
+                git_clone = False
+        else:
+            git_clone=False
+
     if git_clone:
         cmd="git clone -b %s --single-branch %s %s"%(branch, url, qemu_dir)
         rs=sh_cmd(cmd, echo=True)
         print(rs)
-    cmd="cd %s;./configure --target-list=x86_64-softmmu --enable-debug"%(qemu_dir)
-    sh_cmd(cmd, echo=True)
+        cmd="cd %s;./configure --target-list=x86_64-softmmu --enable-debug"%(qemu_dir)
+        sh_cmd(cmd, echo=True)
     cmd="cd %s; make -j 16"%qemu_dir
     sh_cmd(cmd, echo=True)
 

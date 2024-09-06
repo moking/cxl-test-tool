@@ -1,6 +1,7 @@
-import utils.tools as tools
 import os
 import shutil;
+import utils.cxl as cxl
+import utils.tools as tools
 
 def install_mctp_pkg():
     print("install mctp program")
@@ -25,7 +26,7 @@ def mctp_setup(mctp_sh):
     install_mctp_pkg()
     remote_file="/tmp/mctp-setup.sh"
     tools.copy_to_remote(mctp_sh, dst=remote_file)
-    tools.execute_on_vm("bash %s"%remote_file)
+    tools.execute_on_vm("bash %s"%remote_file, echo=True)
 
 def try_fmapi_test():
     url="https://github.com/moking/cxl-fmapi-tests-clone.git"
@@ -37,10 +38,12 @@ def try_fmapi_test():
     cmd="cd %s; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"%test_dir
     tools.execute_on_vm(cmd, echo=True)
 
-def run():
+def run_fm_test():
     url="https://github.com/torvalds/linux"
     branch="v6.6-rc6"
     dire=os.path.expanduser("~/cxl/linux-%s"%branch)
+
+    os.environ["KERNEL_ROOT"]=dire
 
     test_dir=os.getenv("cxl_test_tool_dir").strip("\"")
     kconfig=test_dir+"/test-workflows/mctp/kernel.config"
@@ -57,9 +60,14 @@ def run():
     else:
         print("mctp patches already applied, continue...")
 
-    qemu_dir=os.getenv("QEMU_ROOT")
+    qemu_dir = os.path.expanduser("~/cxl/qemu-mctp")
+    url="https://gitlab.com/jic23/qemu.git"
+    branch="cxl-2024-08-20"
+    tools.setup_qemu(url=url, branch=branch, qemu_dir=qemu_dir)
+
     QEMU=qemu_dir+"/build/qemu-system-x86_64"                                   
-    qpatch=test_dir+"/test-workflows/mctp/mctp-patches-qemu.patch"
-    cmd="cd %s; git am --reject %s"%(qemu_dir, qpatch)
-    tools.sh_cmd(cmd, echo=True)
-    
+    #qpatch=test_dir+"/test-workflows/mctp/mctp-patches-qemu.patch"
+    #cmd="cd %s; git am --reject %s"%(qemu_dir, qpatch)
+    #tools.sh_cmd(cmd, echo=True)
+    topo=cxl.find_topology("fm")
+    tools.run_qemu(qemu=QEMU,topo=topo, kernel=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage")
