@@ -442,3 +442,4 @@ if args["test_fm"]:
 if args["test_libcxlmi"]:
     mctp.run_libcxlmi_test()
 
+#mctp.run_for_mctp_setup()

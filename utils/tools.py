@@ -130,6 +130,16 @@ def path_exist_on_vm(path, port="2024"):
     else:
         return False
 
+def command_found_on_vm(cmd, port="2024"):
+    if not vm_is_running():
+        print("VM is not running, exit")
+        return False
+    s="which %s; echo $?"%cmd
+    rs = execute_on_vm(s, ssh_port=port)
+    if rs == "1":
+        return False
+    return True
+
 def parse_json(file):
     with open(file, 'r') as file:
         # Parse the JSON data into a Python dictionary

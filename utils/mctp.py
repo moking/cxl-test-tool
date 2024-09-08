@@ -6,13 +6,13 @@ import utils.tools as tools
 def install_mctp_pkg():
     print("install mctp program")
     url="https://github.com/CodeConstruct/mctp.git"
-    mctp_dir="/tmp/mctp"
+    mctp_dir="~/mctp"
     
     if tools.path_exist_on_vm("/etc/systemd/system/mctpd.service"):
         print("mctpd service already configured, skip")
         return
 
-    tools.install_packages_on_vm("libsystemd-dev python3-pytest")
+    tools.install_packages_on_vm("libsystemd-dev python3-pytest meson")
     if not tools.path_exist_on_vm(mctp_dir):
         tools.execute_on_vm("git clone %s %s"%(url, mctp_dir), echo=True)
         tools.execute_on_vm("cd %s; git reset --hard 69ed224ff9b5206ca7f3a5e047a9da61377d2ca7"%mctp_dir, echo=True)
@@ -99,6 +99,25 @@ def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main
         cmd="cd %s; meson compile -C build;"%target_dir
         tools.execute_on_vm(cmd, echo=True)
 
+def run_for_mctp_setup():
+    if tools.vm_is_running():
+        print("Shut down existing VM ...")
+        tools.shutdown_vm()
 
+    #url="https://github.com/torvalds/linux"
+    branch="v6.6-rc6"
+    dire=os.path.expanduser("~/cxl/linux-%s"%branch)
+    qemu_dir = os.path.expanduser("~/cxl/qemu-mctp")
 
-    
+    if not dire or not qemu_dir:
+        print("Kernel or qemu directory for mctp setup not found")
+        return
+
+    topo="FM_DCD"
+    topo=cxl.find_topology(topo)
+    cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
+    QEMU=qemu_dir+"/build/qemu-system-x86_64"
+    os.environ["KERNEL_ROOT"]=dire
+    tools.run_qemu(qemu=QEMU,topo=topo, kernel=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage")
+    mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
+
