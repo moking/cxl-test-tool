@@ -173,10 +173,14 @@ def create_qemu_image(img_path):
     print(cmd)
     cmd="sudo mkdir %s/root/.ssh"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
-    cmd="cat ~/.ssh/*.pub > /tmp/authorized_keys"
-    tools.exec_shell_direct(cmd, echo=True)
-    cmd="sudo cp /tmp/authorized_keys %s/root/.ssh/"%tmp_dir
-    tools.exec_shell_direct(cmd, echo=True)
+    pub_files = [f for f in os.listdir(os.path.expanduser("~/.ssh")) if f.endswith('.pub')]
+    if not pub_files:
+        print("Warning: ssh public key file not found on the host, need to mount the image and added to authorized_keys on the VM")
+    else:
+        cmd="cat ~/.ssh/*.pub > /tmp/authorized_keys"
+        tools.exec_shell_direct(cmd, echo=True)
+        cmd="sudo cp /tmp/authorized_keys %s/root/.ssh/"%tmp_dir
+        tools.exec_shell_direct(cmd, echo=True)
     cmd="echo nameserver 8.8.8.8  | sudo tee -a %s/etc/resolv.conf"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
 
@@ -353,7 +357,7 @@ if os.path.exists(config):
 elif os.path.exists(tmp_config):
     read_config(tmp_config)
 else:
-    print("No .vars.config file found")
+    print("No .vars.config file found! Use run_vars.example as an example to create one")
     exit(1)
 QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"                                   
 KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
@@ -373,13 +377,15 @@ if args["create_image"]:
 if args["topo"]:
     topo = cxl.find_topology(args["topo"])
     if not topo:
-        print("No CXL topology given, use -T or --create-topo")
+        print("No valid static topology found!")
         exit(1)
 
 if args["create_topo"]:
     topo=gen_cxl_topology()
 
 if args["run"]:
+    if not topo:
+        topo=cxl.find_topology("RP1")
     run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)
 
 if args["login"]:
