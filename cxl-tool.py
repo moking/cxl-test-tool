@@ -334,8 +334,8 @@ parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', require
 parser.add_argument('--create-dcR', help='create a dc Region for a memdev', required=False, default="")
 parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', required=False, default="")
 parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
-parser.add_argument('--mctp-setup', help='setup mctp test software', action='store_true')
-parser.add_argument('--mctp-try', help='try mctp test', action='store_true')
+parser.add_argument('--setup-mctp', help='setup mctp test software', action='store_true')
+parser.add_argument('--try-mctp', help='try mctp test', action='store_true')
 # ras related commands
 parser.add_argument('--install-ras-tools', help='install ras related tool', action='store_true')
 parser.add_argument('--inject-aer', help='inject aer', required=False, default="")
@@ -429,9 +429,9 @@ if args["issue_qmp"]:
     tools.issue_qmp_cmd(args["issue_qmp"])
 
 cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
-if args["mctp_setup"]:
+if args["setup_mctp"]:
     mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
-if args["mctp_try"]:
+if args["try_mctp"]:
     mctp.try_fmapi_test()
 
 if args["install_ras_tools"]:

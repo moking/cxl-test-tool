@@ -25,6 +25,9 @@ def install_mctp_pkg():
 
 
 def mctp_setup(mctp_sh):
+    if not tools.vm_is_running():
+        print("VM is not running")
+        return
     install_mctp_pkg()
     remote_file="/tmp/mctp-setup.sh"
     tools.copy_to_remote(mctp_sh, dst=remote_file)
@@ -33,6 +36,9 @@ def mctp_setup(mctp_sh):
 def try_fmapi_test():
     url="https://github.com/moking/cxl-fmapi-tests-clone.git"
     test_dir="/tmp/fmapi-test"
+    if not tools.vm_is_running():
+        print("VM is not running")
+        return
     if not tools.path_exist_on_vm(test_dir):
         tools.execute_on_vm("git clone %s %s"%(url, test_dir))
     cmd="cd %s; gcc cxl-mctp-test.c -o cxl-mctp-test"%test_dir
