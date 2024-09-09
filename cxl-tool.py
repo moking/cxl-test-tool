@@ -341,6 +341,7 @@ parser.add_argument('--install-ras-tools', help='install ras related tool', acti
 parser.add_argument('--inject-aer', help='inject aer', required=False, default="")
 parser.add_argument('--test-fm', help='run FMAPI test workflow', action='store_true')
 parser.add_argument('--test-libcxlmi', help='run libcxlmi test workflow', action='store_true')
+parser.add_argument('--start-vm', help='start vm with specified setup (regular, mctp)', required=False, default="")
 
 args = vars(parser.parse_args())
 
@@ -441,5 +442,10 @@ if args["test_fm"]:
     mctp.run_fm_test()
 if args["test_libcxlmi"]:
     mctp.run_libcxlmi_test()
-
-#mctp.run_for_mctp_setup()
+if args["start_vm"]:
+    if args["start_vm"] == "mctp":
+        mctp.setup_vm_for_mctp()
+    else:
+        if not topo:
+            topo=cxl.find_topology("RP1")
+        run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)

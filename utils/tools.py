@@ -332,6 +332,26 @@ run_log="/tmp/qemu.log"
 net_config="-netdev user,id=network0,hostfwd=tcp::%s-:22 -device e1000,netdev=network0"%ssh_port
 SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
 
+def run_with_dcd_mctp():
+    name="qemu-system"
+    key1="volatile-dc-memdev"
+    key2="i2c_mctp_cxl"
+    has_dcd = False
+    has_mctp = False
+    for process in psutil.process_iter(['name', 'cmdline']):
+        try:
+            # Check if the process name matches
+            if name in process.info['name']:
+                args=process.info['cmdline']
+                for arg in args:
+                    if key1 in arg:
+                        has_dcd = True
+                    if key2 in arg:
+                        has_mctp = True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue;
+    return has_dcd,has_mctp
+
 def run_qemu(qemu, topo, kernel):
     user=sh_cmd("whoami")
     if vm_is_running():
@@ -356,6 +376,7 @@ def run_qemu(qemu, topo, kernel):
     bg_cmd(bin+cmd)
     if vm_is_running():
         write_to_file(status_file, "QEMU:running")
+        write_to_file("/tmp/topo", topo);
         print("QEMU instance is up, access it: ssh root@localhost -p %s"%ssh_port)
     else:
         write_to_file(status_file, "")
