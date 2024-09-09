@@ -139,3 +139,4 @@ def setup_vm_for_mctp(kernel="~/cxl/linux-v6.6-rc6", qemu_dir="~/cxl/qemu-mctp")
     topo=cxl.find_topology(topo)
     QEMU=qemu_dir+"/build/qemu-system-x86_64"
     tools.run_qemu(qemu=QEMU,topo=topo, kernel=kernel+"/arch/x86/boot/bzImage")
+    mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")

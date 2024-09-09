@@ -113,6 +113,11 @@ def gdb_qemu():
     if rs == "1":
         cmd="echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope"
         rs=sh_cmd(cmd)
+        cmd="cat /proc/sys/kernel/yama/ptrace_scope"
+        rs=sh_cmd(cmd)
+        if rs == "1":
+            print("ptrace_scope not correctly set")
+            return
     gdb_process(pid)
 
 def gdb_kernel():
