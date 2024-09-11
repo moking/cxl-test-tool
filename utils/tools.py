@@ -134,9 +134,9 @@ def command_found_on_vm(cmd, port="2024"):
     if not vm_is_running():
         print("VM is not running, exit")
         return False
-    s="which %s; echo $?"%cmd
+    s="which %s | grep -c %s"%(cmd, cmd)
     rs = execute_on_vm(s, ssh_port=port)
-    if rs == "1":
+    if rs == "0":
         return False
     return True
 
@@ -224,6 +224,7 @@ def setup_qemu(url, branch, qemu_dir):
 
 def setup_kernel(url, branch, kernel_dir, kconfig=""):
     git_clone=True
+    recompile=True
     kernel_dir=os.path.expanduser(kernel_dir)
     if os.path.exists(kernel_dir):
         print("%s exists, please take care of it first before proceeding"%kernel_dir)
@@ -240,10 +241,12 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
     else:
         cmd=input("Want to pull updates from remote repo for branch %s (Y/N):"%branch)
         if not cmd:
-            cmd="Y"
+            cmd="N"
         if cmd.lower() == "y":
             cmd="git pull"
             sh_cmd(cmd, echo=True)
+        else:
+            recompile = False
     if not kconfig:
         if os.path.exists("%s/.config"%kernel_dir):
             rs=input("Found .config under %s, use it for kernel config without change (Y/N): "%kernel_dir)
@@ -262,6 +265,8 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
                 else:
                     print("Unknown choice, exit")
                     return
+            else:
+                recompile = False
         else:
             rs=input(".config not found, configure mannually (1) or copy the example config (2): ")
             if not rs:
@@ -278,8 +283,9 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
         cmd="cp %s %s/.config"%(kconfig, kernel_dir)
         sh_cmd(cmd, echo=True)
 
-    exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
-    exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+    if recompile:
+        exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
+        exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
 
 def build_qemu(qemu_dir):
     qemu_dir=os.path.expanduser(qemu_dir)

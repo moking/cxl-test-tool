@@ -88,32 +88,27 @@ def run_fm_test():
         prepare_fm_test()
     try_fmapi_test()
 
-def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main", target_dir="~/libcxlmi"):
-    git_clone=True
-
-    dcd, mctp = tools.run_with_dcd_mctp()
-    if not tools.vm_is_running():
-        prepare_fm_test(topo="FM_DCD")
-    if mctp:
-        cmd = "cd %s; ./build/examples/cxl-mctp"%target_dir
-        tools.execute_on_vm(cmd, echo=True)
-        return
-    if tools.path_exist_on_vm(target_dir):
-        rs=input("%s already exist, do you want to remove it before proceeding (Y/N): "%target_dir)
-        if rs and rs.lower() == "y":
-            cmd="rm -rf %s"%target_dir
-            tools.execute_on_vm(cmd, echo=True)
+def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main", target_dir="/tmp/libcxlmi"):
+    need_start=True
+    if tools.vm_is_running():
+        dcd, mctp = tools.run_with_dcd_mctp()
+        if mctp:
+            need_start = False
         else:
-            git_clone=False
-    if git_clone:
-        cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
+            tools.shutdown_vm()
+
+    if need_start:
+        prepare_fm_test(topo="FM_DCD")
+
+    if tools.path_exist_on_vm(target_dir):
+        cmd="rm -rf %s"%target_dir
         tools.execute_on_vm(cmd, echo=True)
-        tools.install_packages_on_vm("meson libdbus-1-dev")
-        cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
-        tools.execute_on_vm(cmd, echo=True)
-    else:
-        cmd="cd %s; meson compile -C build;"%target_dir
-        tools.execute_on_vm(cmd, echo=True)
+
+    tools.install_packages_on_vm("meson libdbus-1-dev git")
+    cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
+    tools.execute_on_vm(cmd, echo=True)
+    cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
+    tools.execute_on_vm(cmd, echo=True)
     cmd = "cd %s; ./build/examples/cxl-mctp"%target_dir
     tools.execute_on_vm(cmd, echo=True)
 
