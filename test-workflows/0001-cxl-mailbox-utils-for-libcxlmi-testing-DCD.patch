@@ -1,0 +1,182 @@
+From e7ed3428b74823ef051f9094327f455cf2f8a43a Mon Sep 17 00:00:00 2001
+From: Fan Ni <fan.ni@samsung.com>
+Date: Wed, 11 Sep 2024 09:48:46 -0700
+Subject: [PATCH] cxl-mailbox-utils: for libcxlmi testing DCD
+
+---
+ hw/cxl/cxl-mailbox-utils.c | 131 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 131 insertions(+)
+
+diff --git a/hw/cxl/cxl-mailbox-utils.c b/hw/cxl/cxl-mailbox-utils.c
+index c2d776bc96..0336aa494b 100644
+--- a/hw/cxl/cxl-mailbox-utils.c
++++ b/hw/cxl/cxl-mailbox-utils.c
+@@ -2195,6 +2195,70 @@ static CXLRetCode cmd_dcd_get_dyn_cap_config(const struct cxl_cmd *cmd,
+     *len_out = out_pl_len;
+     return CXL_MBOX_SUCCESS;
+ }
++#if 0
++/*
++ * CXL r3.1 section 8.2.9.9.9.2:
++ * Get Dynamic Capacity Extent List (Opcode 4801h)
++ */
++static CXLRetCode cmd_dcd_get_dyn_cap_ext_list_fake(const struct cxl_cmd *cmd,
++                                               uint8_t *payload_in,
++                                               size_t len_in,
++                                               uint8_t *payload_out,
++                                               size_t *len_out,
++                                               CXLCCI *cci)
++{
++    struct {
++        uint32_t extent_cnt;
++        uint32_t start_extent_id;
++    } QEMU_PACKED *in = (void *)payload_in;
++    struct {
++        uint32_t count;
++        uint32_t total_extents;
++        uint32_t generation_num;
++        uint8_t rsvd[4];
++        CXLDCExtentRaw records[];
++    } QEMU_PACKED *out = (void *)payload_out;
++    uint32_t start_extent_id = in->start_extent_id;
++    uint16_t record_count = 0, record_done = 0;
++    uint64_t dpa, len = 32 * 1024 * 1024;
++    uint16_t out_pl_len, size;
++
++#define TOTAL_EXTENT_COUNT 10
++#define COUNT_PER_READ 2
++
++    if (start_extent_id > TOTAL_EXTENT_COUNT) {
++        return CXL_MBOX_INVALID_INPUT;
++    }
++
++    record_count = MIN(in->extent_cnt, COUNT_PER_READ);
++    size = CXL_MAILBOX_MAX_PAYLOAD_SIZE - sizeof(*out);
++    record_count = MIN(record_count, size / sizeof(out->records[0]));
++    out_pl_len = sizeof(*out) + record_count * sizeof(out->records[0]);
++
++    stl_le_p(&out->count, record_count);
++    stl_le_p(&out->total_extents, TOTAL_EXTENT_COUNT);
++    stl_le_p(&out->generation_num, 0);
++
++    if (record_count > 0) {
++        while (true) {
++            CXLDCExtentRaw *out_rec = &out->records[record_done];
++            dpa = (start_extent_id + record_done) * len;
++            stq_le_p(&out_rec->start_dpa, dpa);
++            stq_le_p(&out_rec->len, len);
++            memset(&out_rec->tag, 0, 0x10);
++            stw_le_p(&out_rec->shared_seq, 0);
++
++            record_done++;
++            if (record_done == record_count) {
++                break;
++            }
++        }
++    }
++
++    *len_out = out_pl_len;
++    return CXL_MBOX_SUCCESS;
++}
++#endif
+ 
+ /*
+  * CXL r3.1 section 8.2.9.9.9.2:
+@@ -2470,6 +2534,47 @@ static CXLRetCode cxl_dcd_add_dyn_cap_rsp_dry_run(CXLType3Dev *ct3d,
+     return CXL_MBOX_SUCCESS;
+ }
+ 
++/*
++ * CXL r3.1 section 8.2.9.9.9.3: Add Dynamic Capacity Response (Opcode 4802h)
++ * An extent is added to the extent list and becomes usable only after the
++ * response is processed successfully.
++ */
++static CXLRetCode cmd_dcd_add_dyn_cap_rsp_fake(const struct cxl_cmd *cmd,
++                                          uint8_t *payload_in,
++                                          size_t len_in,
++                                          uint8_t *payload_out,
++                                          size_t *len_out,
++                                          CXLCCI *cci)
++{
++    CXLUpdateDCExtentListInPl *in = (void *)payload_in;
++    CXLType3Dev *ct3d = CXL_TYPE3(cci->d);
++    CXLDCExtentList *extent_list = &ct3d->dc.extents;
++    uint32_t i;
++    uint64_t dpa, len;
++
++    if (in->num_entries_updated == 0) {
++        cxl_extent_group_list_delete_front(&ct3d->dc.extents_pending);
++        return CXL_MBOX_SUCCESS;
++    }
++
++    /* Adding extents causes exceeding device's extent tracking ability. */
++    if (in->num_entries_updated + ct3d->dc.total_extent_count >
++        CXL_NUM_EXTENTS_SUPPORTED) {
++        return CXL_MBOX_RESOURCES_EXHAUSTED;
++    }
++
++    for (i = 0; i < in->num_entries_updated; i++) {
++        dpa = in->updated_entries[i].start_dpa;
++        len = in->updated_entries[i].len;
++
++        cxl_insert_extent_to_extent_list(extent_list, dpa, len, NULL, 0);
++        ct3d->dc.total_extent_count += 1;
++        ct3_set_region_block_backed(ct3d, dpa, len);
++    }
++
++    return CXL_MBOX_SUCCESS;
++}
++
+ /*
+  * CXL r3.1 section 8.2.9.9.9.3: Add Dynamic Capacity Response (Opcode 4802h)
+  * An extent is added to the extent list and becomes usable only after the
+@@ -2761,6 +2866,20 @@ static const struct cxl_cmd cxl_cmd_set_dcd[256][256] = {
+         ~0, CXL_MBOX_IMMEDIATE_DATA_CHANGE },
+ };
+ 
++static const struct cxl_cmd cxl_cmd_set_dcd_libcxlmi[256][256] = {
++    [DCD_CONFIG][GET_DC_CONFIG] = { "DCD_GET_DC_CONFIG",
++        cmd_dcd_get_dyn_cap_config, 2, 0 },
++    [DCD_CONFIG][GET_DYN_CAP_EXT_LIST] = {
++        "DCD_GET_DYNAMIC_CAPACITY_EXTENT_LIST", cmd_dcd_get_dyn_cap_ext_list,
++        8, 0 },
++    [DCD_CONFIG][ADD_DYN_CAP_RSP] = {
++        "DCD_ADD_DYNAMIC_CAPACITY_RESPONSE", cmd_dcd_add_dyn_cap_rsp_fake,
++        ~0, CXL_MBOX_IMMEDIATE_DATA_CHANGE },
++    [DCD_CONFIG][RELEASE_DYN_CAP] = {
++        "DCD_RELEASE_DYNAMIC_CAPACITY", cmd_dcd_release_dyn_cap,
++        ~0, CXL_MBOX_IMMEDIATE_DATA_CHANGE },
++};
++
+ static const struct cxl_cmd cxl_cmd_set_sw[256][256] = {
+     [INFOSTAT][IS_IDENTIFY] = { "IDENTIFY", cmd_infostat_identify, 0, 0 },
+     [INFOSTAT][BACKGROUND_OPERATION_STATUS] = { "BACKGROUND_OPERATION_STATUS",
+@@ -3041,13 +3160,25 @@ static const struct cxl_cmd cxl_cmd_set_t3_fm_owned_ld_mctp[256][256] = {
+     [TIMESTAMP][GET] = { "TIMESTAMP_GET", cmd_timestamp_get, 0, 0 },
+     [TUNNEL][MANAGEMENT_COMMAND] = { "TUNNEL_MANAGEMENT_COMMAND",
+                                      cmd_tunnel_management_cmd, ~0, 0 },
++    [IDENTIFY][MEMORY_DEVICE] = { "IDENTIFY_MEMORY_DEVICE",
++        cmd_identify_memory_device, 0, 0 },
++    [FIRMWARE_UPDATE][GET_INFO] = { "FIRMWARE_UPDATE_GET_INFO",
++        cmd_firmware_update_get_info, 0, 0 },
++    [TIMESTAMP][SET] = { "TIMESTAMP_SET", cmd_timestamp_set,
++                         8, CXL_MBOX_IMMEDIATE_POLICY_CHANGE },
++    [INFOSTAT][BACKGROUND_OPERATION_STATUS] = { "BACKGROUND_OPERATION_STATUS",
++        cmd_infostat_bg_op_sts, 0, 0 },
+ };
+ 
+ void cxl_initialize_t3_fm_owned_ld_mctpcci(CXLCCI *cci, DeviceState *d,
+                                            DeviceState *intf,
+                                            size_t payload_max)
+ {
++    CXLType3Dev *ct3d = CXL_TYPE3(d);
+     cxl_copy_cci_commands(cci, cxl_cmd_set_t3_fm_owned_ld_mctp);
++    if (ct3d->dc.num_regions) {
++        cxl_copy_cci_commands(cci, cxl_cmd_set_dcd_libcxlmi);
++    }
+     cci->d = d;
+     cci->intf = intf;
+     cxl_init_cci(cci, payload_max);
+-- 
+2.43.0
+
