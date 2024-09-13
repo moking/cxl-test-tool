@@ -657,7 +657,7 @@ setup_cxl_memory() {
     region=$(find_region "create_pmem_region")
 
     dax=`echo $region | sed 's/region/dax/'`
-    sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 $memdev -s 512M --debug"
+    sh_on_remote "cxl create-region -m -d decoder0.0 -w 1 $memdev -s 512M"
     sh_on_remote "ndctl create-namespace -m dax -r $region"
     sh_on_remote "daxctl reconfigure-device --mode=system-ram --no-online $dax.0"
     sh_on_remote "daxctl online-memory $dax.0"
@@ -908,10 +908,25 @@ gdb_ndctl() {
     sh_on_remote "cd ndctl; gdb --args build/$opt"
 }
 
+ndctl_installed() {
+    cmds='ndctl daxctl cxl'
+    for cmd in $cmds; do
+        rs=`sh_on_remote "which $cmd | grep -c $cmd" 1>/dev/null`
+        if [ "$rs" == "0" ];then
+            echo "0"
+        fi
+    done
+    echo "1"
+}
 setup_ndctl() {
     echo_task "setup ndctl to install cxl tools"
     url=$1
     dir=/tmp/ndctl
+    rs=`ndctl_installed`
+    if [ $rs == "1" ];then
+        echo "ndctl tools ready installed, skip installing"
+        return
+    fi
 
     if [ "$url" == "" -o `echo $url | grep -c "github"` -eq 0 ]; then
         url=https://github.com/pmem/ndctl.git
