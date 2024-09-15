@@ -1,8 +1,26 @@
 import utils.tools as tools
 import os
 
+ras_service="""
+[Unit]
+Description=Rasdaemon Daemon
+After=syslog.target
+
+[Service]
+ExecStart=/usr/local/sbin/rasdaemon
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+"""
+
 # start: below are rasdaemon related
 def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="scrub_control", dire="~/rasdaemon"):
+    if not tools.vm_is_running():
+        print("VM is not running, exit")
+        return
     cmd="install rasdaemon..."
     print(cmd)
 
@@ -21,7 +39,19 @@ def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="s
     tools.execute_on_vm(cmd, echo=True)
     cmd="rasdaemon"
     tools.execute_on_vm(cmd, echo=True)
-
+    f="/tmp/rasdaemon.service"
+    dst="/etc/systemd/system/rasdaemon.service"
+    if not tools.path_exist_on_vm(dst):
+        tools.write_to_file(f, ras_service)
+        tools.copy_to_remote(f, dst);
+        cmd="systemctl daemon-reload"
+        tools.execute_on_vm(cmd)
+        cmd = "systemctl enable rasdaemon"
+        tools.execute_on_vm(cmd)
+    cmd = "systemctl start rasdaemon"
+    tools.execute_on_vm(cmd, echo=True)
+    cmd = "systemctl status rasdaemon"
+    tools.execute_on_vm(cmd, echo=True)
 
 def install_mce_inject(url="https://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git",
                    branch="master", dire="~/mce-inject"):
