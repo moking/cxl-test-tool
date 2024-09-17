@@ -35,10 +35,10 @@ def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="s
             cmd="git clone -b %s --single-branch %s %s"%(branch, url, dire)
             tools.execute_on_vm(cmd, echo=True)
 
-    cmd="cd %s; bash ./run-me.sh ; ls rasdaemon -lh"%(dire)
+    cmd="cd %s; bash ./run-me.sh 1>&/dev/null; ls rasdaemon -lh"%(dire)
     tools.execute_on_vm(cmd, echo=True)
-    cmd="rasdaemon"
-    tools.execute_on_vm(cmd, echo=True)
+    #cmd="rasdaemon"
+    #tools.execute_on_vm(cmd, echo=True)
     f="/tmp/rasdaemon.service"
     dst="/etc/systemd/system/rasdaemon.service"
     if not tools.path_exist_on_vm(dst):
@@ -72,7 +72,7 @@ def install_mce_inject(url="https://git.kernel.org/pub/scm/utils/cpu/mce/mce-inj
     if tools.package_installed_on_vm("flex"):
         tools.install_packages_on_vm("flex")
 
-    cmd="cd %s; make"%dire
+    cmd="cd %s; make 1>&/dev/null"%dire
     tools.execute_on_vm(cmd, echo=True)
 
 
@@ -91,7 +91,7 @@ def install_mce_test(url="https://git.kernel.org/pub/scm/linux/kernel/git/gong.c
         cmd="git clone -b %s --single-branch %s %s"%(branch, url, dire)
         tools.execute_on_vm(cmd, echo=True)
 
-    cmd="cd %s; make"%dire
+    cmd="cd %s; make 1>&/dev/null"%dire
     tools.execute_on_vm(cmd, echo=True)
 
 
@@ -110,7 +110,7 @@ def install_aer_inject(url="https://git.kernel.org/pub/scm/linux/kernel/git/gong
         cmd="git clone -b %s --single-branch %s %s"%(branch, url, dire)
         tools.execute_on_vm(cmd, echo=True)
 
-    cmd="cd %s; make"%dire
+    cmd="cd %s; make 1>&/dev/null"%dire
     tools.execute_on_vm(cmd, echo=True)
 
 
