@@ -316,6 +316,7 @@ parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setu
 parser.add_argument('-v','--verbose', help='show more message', action='store_true')
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
 parser.add_argument('-T','--topo', help='cxl topology to use', required=False, default="")
+parser.add_argument('-A','--accel', help='accel mode: kvm/tcg', required=False, default="kvm")
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
 parser.add_argument('--login', help='login to the VM', action='store_true')
 parser.add_argument('--poweroff', help='poweroff the VM', action='store_true')
@@ -392,7 +393,7 @@ if args["create_topo"]:
 if args["run"]:
     if not topo:
         topo=cxl.find_topology("RP1")
-    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)
+    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH, accel_mode=args["accel"])
 
 if args["login"]:
     login_vm()
