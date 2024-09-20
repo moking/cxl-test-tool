@@ -27,6 +27,7 @@ from utils.terminal import login_vm as login_vm
 from utils.terminal import gdb_on_vm as gdb_on_vm
 from utils.debug import gdb_process as gdb_process
 from utils.cxl_topology_parser import gen_cxl_topology
+import utils.arm as arm
 
 ndctl_dir="~/ndctl"
 
@@ -348,6 +349,7 @@ parser.add_argument('--inject-aer', help='inject aer', required=False, default="
 parser.add_argument('--test-fm', help='run FMAPI test workflow', action='store_true')
 parser.add_argument('--test-libcxlmi', help='run libcxlmi test workflow', action='store_true')
 parser.add_argument('--start-vm', help='start vm with specified setup (regular, mctp)', required=False, default="")
+parser.add_argument('--build-arm-kernel', help='build kernel for aarch64', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -455,3 +457,7 @@ if args["start_vm"]:
         if not topo:
             topo=cxl.find_topology("RP1")
         run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)
+
+if args["build_arm_kernel"]:
+    kernel_dir=os.getenv("KERNEL_ROOT")
+    arm.build_kernel_arm(kernel=kernel_dir)

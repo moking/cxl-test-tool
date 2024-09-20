@@ -374,7 +374,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
             " "+SHARED_CFG+" "+ net_config + " "+\
             " -monitor telnet:127.0.0.1:12345,server,"+wait_flag+\
             " -drive file="+os.getenv("QEMU_IMG")+",index=0,media=disk,format="+format+\
-            " -machine q35,cxl=on -cpu SandyBridge,mce=on -m 8G,maxmem=32G,slots=8 "+ \
+            " -machine q35,cxl=on -cpu qemu64,mce=on -m 8G,maxmem=32G,slots=8 "+ \
             " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
             " -virtfs local,path=/home/"+user+",mount_tag=homeshare,security_model=mapped "+ topo
 
