@@ -332,6 +332,7 @@ parser.add_argument('--unload-drv', help='uninstall cxl driver on VM', action='s
 parser.add_argument('--create-region', help='create cxl region', required=False, default="")
 parser.add_argument('--destroy-region', help='destroy cxl region', required=False, default="")
 parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
+parser.add_argument('--setup-qemu-arm', help='setup qemu for aarch64', action='store_true')
 parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
 parser.add_argument('-BQ', '--build-qemu', help='build qemu', action='store_true')
 parser.add_argument('-BK', '--build-kernel', help='build kernel', action='store_true')
@@ -349,7 +350,9 @@ parser.add_argument('--inject-aer', help='inject aer', required=False, default="
 parser.add_argument('--test-fm', help='run FMAPI test workflow', action='store_true')
 parser.add_argument('--test-libcxlmi', help='run libcxlmi test workflow', action='store_true')
 parser.add_argument('--start-vm', help='start vm with specified setup (regular, mctp)', required=False, default="")
-parser.add_argument('--build-arm-kernel', help='build kernel for aarch64', action='store_true')
+parser.add_argument('--setup-kernel-arm', help='configure and build kernel for aarch64', action='store_true')
+parser.add_argument('--build-kernel-arm', help='only build kernel for aarch64', action='store_true')
+parser.add_argument('--start-arm', help='start a VM for aarch64', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -373,6 +376,8 @@ KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
 if args["setup_qemu"]:
     tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
+if args["setup_qemu_arm"]:
+    tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"), arch="aarch64-softmmu", debug=False)
 if args["setup_kernel"]:
     tools.setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
 if args["build_qemu"]:
@@ -458,6 +463,15 @@ if args["start_vm"]:
             topo=cxl.find_topology("RP1")
         run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)
 
-if args["build_arm_kernel"]:
+if args["setup_kernel_arm"]:
+    kernel_dir=os.getenv("KERNEL_ROOT")
+    arm.setup_kernel_arm(kernel=kernel_dir)
+if args["build_kernel_arm"]:
     kernel_dir=os.getenv("KERNEL_ROOT")
     arm.build_kernel_arm(kernel=kernel_dir)
+if args["start_arm"]:
+    if not topo:
+        topo=cxl.find_topology("RP1")
+    qemu_dir=os.getenv("QEMU_ROOT")
+    kernel_img=os.getenv("KERNEL_ROOT")+"/arch/arm64/boot/Image"
+    arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img)
