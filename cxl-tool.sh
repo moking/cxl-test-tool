@@ -443,7 +443,7 @@ help() {
     --unload-drv \t\t unload cxl driver
     --setup-qemu \t\t git clone, configure, make and install qemu
     --setup-kernel \t\t git clone, configure, make and install kernel
-    --setup-mctp \t\t setup mctp service"
+    --setup-mctp \t\t setup mctp service
     --kernel-branch \t\t kernel branch
     -P,--port \t\t\t port to ssh to VM
     -L,--login \t\t\t login the VM

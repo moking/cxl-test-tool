@@ -81,7 +81,7 @@ def compile_ndctl(dir):
     return execute_on_vm(cmd)
 
 def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
-    cmd= "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev 1>&/dev/null"
+    cmd= "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev libsystemd-dev 1>&/dev/null"
     print(cmd)
     out=execute_on_vm(cmd)
     print(out)
