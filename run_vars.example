@@ -5,6 +5,8 @@ run_opts_file=/tmp/run_opts
 QEMU_IMG=~/cxl/images/qemu-image.img
 dbg_opt="cxl_acpi.dyndbg=+fplm cxl_pci.dyndbg=+fplm cxl_core.dyndbg=+fplm cxl_mem.dyndbg=+fplm cxl_pmem.dyndbg=+fplm cxl_port.dyndbg=+fplm cxl_region.dyndbg=+fplm cxl_test.dyndbg=+fplm cxl_mock.dyndbg=+fplm cxl_mock_mem.dyndbg=+fplm dax.dyndbg=+fplm dax_cxl.dyndbg=+fplm device_dax.dyndbg=+fplm"
 KERNEL_CMD="root=/dev/sda rw console=ttyS0,115200 ignore_loglevel nokaslr $dbg_opt"
+#For arm64, use kernel command like below
+#KERNEL_CMD="earlycon root=/dev/vda1 fsck.mode=skip tp_printk maxcpus=4 $dbg_opt $edac_debug"
 SHARED_CFG=""
 net_config="-netdev user,id=network0,hostfwd=tcp::$ssh_port-:22 -device e1000,netdev=network0" 
 

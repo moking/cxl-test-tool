@@ -474,4 +474,5 @@ if args["start_arm"]:
         topo=cxl.find_topology("RP1")
     qemu_dir=os.getenv("QEMU_ROOT")
     kernel_img=os.getenv("KERNEL_ROOT")+"/arch/arm64/boot/Image"
-    arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img)
+    bios=os.getenv("BIOS")
+    arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img, bios=bios)

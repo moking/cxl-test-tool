@@ -24,6 +24,7 @@ def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="s
     cmd="install rasdaemon..."
     print(cmd)
 
+    tools.install_packages_on_vm("git libtraceevent-dev libtraceevent1 pkg-config")
     if tools.path_exist_on_vm(dire):
         choice=input("%s exists, delete it before git clone (Y/N): "%dire)
         if choice and choice.lower() == "y":
@@ -35,10 +36,13 @@ def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="s
             cmd="git clone -b %s --single-branch %s %s"%(branch, url, dire)
             tools.execute_on_vm(cmd, echo=True)
 
-    cmd="cd %s; bash ./run-me.sh 1>&/dev/null; ls rasdaemon -lh"%(dire)
+    cmd="cd %s; bash ./run-me.sh"%(dire)
     tools.execute_on_vm(cmd, echo=True)
-    #cmd="rasdaemon"
-    #tools.execute_on_vm(cmd, echo=True)
+    path="%s/rasdaemon"%dire
+    if not tools.path_exist_on_vm(path):
+        print("rasdaemon not createed, exit")
+        return
+
     f="/tmp/rasdaemon.service"
     dst="/etc/systemd/system/rasdaemon.service"
     if not tools.path_exist_on_vm(dst):
@@ -69,8 +73,8 @@ def install_mce_inject(url="https://git.kernel.org/pub/scm/utils/cpu/mce/mce-inj
             cmd="git clone -b %s --single-branch %s %s"%(branch, url, dire)
             tools.execute_on_vm(cmd, echo=True)
 
-    if tools.package_installed_on_vm("flex"):
-        tools.install_packages_on_vm("flex")
+    if tools.package_installed_on_vm("flex bison"):
+        tools.install_packages_on_vm("flex bison")
 
     cmd="cd %s; make 1>&/dev/null"%dire
     tools.execute_on_vm(cmd, echo=True)
