@@ -69,7 +69,7 @@ def copy_host_ssh_key(img, img_format="raw"):
         tool.sh_cmd(cmd, echo=True)
 
     cmd = "mount | grep -c /tmp/mnt"
-    cnt = tool.sh_cmd(cmd)
+    cnt = tool.sh_cmd(cmd, echo=True)
     if cnt == "0":
         print("Mount image seems failed, please check")
         cmd = "sudo umount /tmp/mnt"
@@ -130,6 +130,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     if not bios or not os.path.exists(bios):
         print("Cannot find QEMU_EFI.fd file")
         print("Try to build one...")
+        return
         cmd=" mkdir /tmp/tianocore; \
                 cd /tmp/tianocore; \
                 git clone https://git.linaro.org/uefi/uefi-tools.git; \

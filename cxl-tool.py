@@ -80,6 +80,15 @@ def compile_ndctl(dir):
     print(cmd)
     return execute_on_vm(cmd)
 
+def ndctl_installed():
+    cmds = "cxl daxctl ndctl"
+    for cmd in cmds.split():
+        rs = execute_on_vm("which %s"%cmd)
+        if not rs:
+            return False
+    print("ndctl tools are already installed!")
+    return True
+
 def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
     cmd= "apt-get install -y git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev libsystemd-dev 1>&/dev/null"
     print(cmd)
@@ -92,6 +101,8 @@ def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
     out=compile_ndctl(dir)
     print(out)
 
+    return ndctl_installed();
+
 def gdb_ndctl(cmd):
     subdir=cmd.split()[0]
     if not vm_is_running():
@@ -101,6 +112,7 @@ def gdb_ndctl(cmd):
         print("ndctl directory not found")
         return
 
+    tools.install_packages_on_vm("gdb")
     gdb_on_vm("gdb --args %s/build/%s/%s"%(ndctl_dir, subdir, cmd))
 
 def gdb_qemu():
@@ -229,9 +241,11 @@ def cxl_pmem_test(memdev):
     if not vm_is_running():
         print("VM is not running, skip")
         return
-    if not path_exist_on_vm(ndctl_dir):
+    if not path_exist_on_vm(ndctl_dir) or not ndctl_installed():
         ndctl_url=os.getenv("ndctl_url")
-        install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        rs = install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        if not rs:
+            return
 
     if not cxl.cxl_driver_loaded():
         cxl.load_driver()
@@ -264,7 +278,10 @@ def cxl_vmem_test(memdev):
         return
     if not path_exist_on_vm(ndctl_dir):
         ndctl_url=os.getenv("ndctl_url")
-        install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        rs = install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        if not rs:
+            return
+
 
     if not cxl.cxl_driver_loaded():
         cxl.load_driver()
@@ -285,7 +302,9 @@ def dcd_test(memdev):
 
     if not path_exist_on_vm(ndctl_dir):
         ndctl_url=os.getenv("ndctl_url")
-        install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        rs = install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        if not rs:
+            return
 
     if not cxl.cxl_driver_loaded():
         print("Load cxl drivers first")
