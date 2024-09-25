@@ -43,10 +43,9 @@ def expend_variable(value):
         if not item:
             continue
         item=item.strip()
-        item=item.strip("\"")
-        if not item:
-            continue
-        if item[0] == "$":
+        if item:
+            item=item.strip("\"")
+        if item and item[0] == "$":
             name=item[1:]
             item=os.getenv(name.strip("\""))
             if not item:

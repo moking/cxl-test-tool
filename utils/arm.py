@@ -9,7 +9,12 @@ def setup_kernel_arm(kernel, echo=True):
     kernel=os.path.expanduser(kernel)
     if not os.path.exists(kernel):
         print("kernel source code directory not found, exit")
-        return
+        print("call setup_kernel to git clone the kernel repos..")
+        url=os.getenv("kernel_url");
+        branch=os.getenv("kernel_branch");
+        cmd="git clone -b %s --single-branch %s %s"%(branch, url, kernel)
+        tool.exec_shell_direct(cmd, echo=True)
+
     tool.install_packages(pkgs)
     if not tool.package_installed("gcc-aarch64-linux-gnu"):
         print("No gcc tool for aarch64 installed, exit")
@@ -30,12 +35,12 @@ def build_kernel_arm(kernel, echo=True):
     if not tool.package_installed("gcc-aarch64-linux-gnu"):
         print("No gcc tool for aarch64 installed, exit")
         return
-    cmd="export ARCH=arm64; export CROSS_COMPILE=aarch64-linux-gnu-; cd %s; make menuconfig; make -j16 all"%kernel
+    cmd="export ARCH=arm64; export CROSS_COMPILE=aarch64-linux-gnu-; cd %s; make menuconfig; make -j16"%kernel
     tool.exec_shell_direct(cmd, echo=echo);
     cmd="cd %s; sudo make modules_install"%kernel
     tool.exec_shell_direct(cmd, echo=echo);
 
-extra_opts=""
+extra_opts="-s"
 wait_flag="nowait"
 format="raw"
 num_cpus="4"
@@ -82,7 +87,7 @@ def copy_host_ssh_key(img, img_format="raw"):
     files = tool.sh_cmd(cmd)
     files=files.split()
     for f in files:
-        cmd = "cat ~/.ssh/%s | sudo tee -a %s;"%(f, "/tmp/mnt/root/.ssh/authorized_keys")
+        cmd = "cat ~/.ssh/%s | sudo tee %s;"%(f, "/tmp/mnt/root/.ssh/authorized_keys")
         tool.sh_cmd(cmd,echo=True)
         rs = True
         break
@@ -192,7 +197,8 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
         format = "qcow2"
     else:
         format="raw"
-    args = " -M virt,nvdimm=on,gic-version=3,cxl=on,ras=on"+\
+    args = " %s"%extra_opts +\
+            " -M virt,nvdimm=on,gic-version=3,cxl=on,ras=on"+\
             " -m 4G,maxmem=8G,slots=8"+\
             " -cpu max -smp %s"%num_cpus + \
             " -kernel %s"%kernel +\
@@ -213,9 +219,13 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     print(bin+args)
     tool.write_to_file("/tmp/run-cmd", bin+args)
 
-    tool.bg_cmd(bin+args)
-    # comment above and uncomment this line if need to login directly
-    #tool.exec_shell_direct(bin+args)
+    run_mode = input("Do you want to run VM in current terminal (Y/N): ")
+    if run_mode and run_mode.lower() == "y":
+        # comment above and uncomment this line if need to login directly
+        tool.exec_shell_direct(bin+args)
+        return
+    else:
+        tool.bg_cmd(bin+args)
     print("INFO: if cannot ssh to VM after boot, make sure the ssh service is enabled on the VM, Try to login directly by using exec_shell_direct as comment above!!!")
     print("Wait for the VM to be ready...")
     cmd = "ssh root@localhost -p 2024 \"ls; echo $?\""
