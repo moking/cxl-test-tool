@@ -130,6 +130,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     if not bios or not os.path.exists(bios):
         print("Cannot find QEMU_EFI.fd file")
         print("Try to build one...")
+        tool.install_packages("iasl acpica-tools")
         cmd=" mkdir /tmp/tianocore; \
                 cd /tmp/tianocore; \
                 git clone https://git.linaro.org/uefi/uefi-tools.git; \
@@ -215,7 +216,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     tool.bg_cmd(bin+args)
     # comment above and uncomment this line if need to login directly
     #tool.exec_shell_direct(bin+args)
-
+    print("INFO: if cannot ssh to VM after boot, make sure the ssh service is enabled on the VM, Try to login directly by using exec_shell_direct as comment above!!!")
     print("Wait for the VM to be ready...")
     cmd = "ssh root@localhost -p 2024 \"ls; echo $?\""
     tool.exec_shell_direct(cmd)
@@ -239,7 +240,6 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
             print("WARNING: make sure /lib/modules is mounted if needed")
 
         print("QEMU instance is up, access it: ssh root@localhost -p %s"%ssh_port)
-        print("INFO: if cannot ssh to VM, make sure the ssh service is enabled on the VM, Try to login directly by using exec_shell_direct as comment above!!!")
     else:
         tool.write_to_file(status_file, "")
         print("Start Qemu failed, check /tmp/qemu.log for more information")

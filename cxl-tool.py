@@ -40,13 +40,18 @@ def expend_variable(value):
     rs=""
     items=value.split()
     for item in items:
+        if not item:
+            continue
         item=item.strip()
         item=item.strip("\"")
         if not item:
             continue
         if item[0] == "$":
             name=item[1:]
-            item=os.getenv(name.strip("\"")).strip("\"")
+            item=os.getenv(name.strip("\""))
+            if not item:
+                continue
+            item = item.strip("\"")
         rs += item + " "
     
     return rs
