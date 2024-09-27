@@ -1,0 +1,3 @@
+To run python implemented tool: cxl-tool.py, we need some packages installed
+python3-psutil
+python3-paramiko

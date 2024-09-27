@@ -6,7 +6,6 @@ import time
 pkgs="build-essential libncurses-dev bison flex libssl-dev libelf-dev bc qemu-efi-aarch64 gcc-aarch64-linux-gnu"
 
 def setup_kernel_arm(kernel, echo=True):
-    kernel=os.path.expanduser(kernel)
     if not os.path.exists(kernel):
         print("kernel source code directory not found, exit")
         print("call setup_kernel to git clone the kernel repos..")
@@ -27,7 +26,6 @@ def setup_kernel_arm(kernel, echo=True):
     tool.exec_shell_direct(cmd, echo=echo);
 
 def build_kernel_arm(kernel, echo=True):
-    kernel=os.path.expanduser(kernel)
     if not os.path.exists(kernel):
         print("kernel source code directory not found, exit")
         return
@@ -102,6 +100,7 @@ def copy_host_ssh_key(img, img_format="raw"):
 
 def start_vm(qemu_dir, topo, kernel, bios=""):
     bin=qemu_dir+"/build/qemu-system-aarch64"
+    print(bin)
 
     if tool.vm_is_running():
         print("VM is running, exit")
@@ -115,7 +114,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     pkg="qemu-efi-aarch64"
     tool.install_packages(pkg)
 
-    img=os.getenv("QEMU_IMG")
+    img=tool.system_path("QEMU_IMG")
 
     if not os.path.exists(img):
         print("Qemu image file not found!!!")
@@ -135,7 +134,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     if not bios or not os.path.exists(bios):
         print("Cannot find QEMU_EFI.fd file")
         print("Try to build one...")
-        tool.install_packages("iasl acpica-tools")
+        tool.install_packages("iasl acpica-tools gcc-aarch64-linux-gnu python-is-python3")
         cmd=" mkdir /tmp/tianocore; \
                 cd /tmp/tianocore; \
                 git clone https://git.linaro.org/uefi/uefi-tools.git; \
@@ -211,7 +210,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
             " -append "+os.getenv("KERNEL_CMD")+ \
             " -nographic -no-reboot" +\
             " -monitor telnet:127.0.0.1:12345,server,"+wait_flag+\
-            " -virtfs local,path=/home/%s,mount_tag=homeshare,security_model=mapped "%usr+ \
+            " -virtfs local,path=%s,mount_tag=homeshare,security_model=mapped "%tool.system_path("HOME")+ \
             " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped " + topo
             #" -machine ras=on"
 #-M virt,nvdimm=on,gic-version=3,cxl=on -m 4g,maxmem=8G,slots=8 -cpu max -smp 4 -kernel Image -drive if=none,file=debian.qcow2,format=qcow2,id=hd -device pcie-root-port,id=root_port1 -device virtio-blk-pci,drive=hd -netdev type=user,id=mynet,hostfwd=tcp::5555-:22 -qmp tcp:localhost:4445,server=on,wait=off -device virtio-net-pci,netdev=mynet,id=bob -nographic -no-reboot -append 'earlycon root=/dev/vda1 fsck.mode=skip tp_printk maxcpus=4' -monitor telnet:127.0.0.1:1234,server,nowait -bios QEMU_EFI.fd -object memory-backend-ram,size=4G,id=mem0 -numa node,nodeid=0,cpus=0-3,memdev=mem0

@@ -13,6 +13,7 @@ import utils.dcd as dcd
 import utils.tools as tools
 import utils.mctp as mctp
 import utils.ras as ras
+from utils.tools import system_path as system_path
 from utils.tools import run_qemu as run_qemu
 from utils.tools import shutdown_vm as shutdown_vm
 from utils.tools import vm_is_running as vm_is_running
@@ -141,7 +142,7 @@ def gdb_kernel():
     if not vm_is_running:
         print("VM is not running, skip debug")
         return
-    path=os.getenv("KERNEL_ROOT")
+    path=system_path("KERNEL_ROOT")
     original_sigint_handler = signal.getsignal(signal.SIGINT)
     try:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -173,7 +174,7 @@ def create_qemu_image(img_path):
     file="/tmp/netplan-config.yaml"
     write_to_file(file, cmd)
     sh_cmd("chmod 600  %s"%file)
-    qemu_tool=os.getenv("QEMU_ROOT") + "/build/qemu-img"
+    qemu_tool=system_path("QEMU_ROOT") + "/build/qemu-img"
     if not os.path.exists(qemu_tool):
         print("qemu-img tool not found")
         return
@@ -394,11 +395,11 @@ elif os.path.exists(tmp_config):
 else:
     print("No .vars.config file found! Use run_vars.example as an example to create one")
     exit(1)
-QEMU=os.getenv("QEMU_ROOT")+"/build/qemu-system-x86_64"                                   
-KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
+QEMU=system_path("QEMU_ROOT")+"/build/qemu-system-x86_64"
+KERNEL_PATH=system_path("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
 if args["setup_qemu"]:
-    tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
+    tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=system_path("QEMU_ROOT"))
 if args["setup_qemu_arm"]:
     print("NOTE: arm cxl support for Qemu has not upstreamed yet, make sure you use jonathans local tree and branch")
     print("url: https://gitlab.com/jic23/qemu.git")
@@ -407,16 +408,16 @@ if args["setup_qemu_arm"]:
     if not ch or ch.lower() != "y":
         exit(0)
 
-    tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"), arch="aarch64-softmmu", debug=False)
+    tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=system_path("QEMU_ROOT"), arch="aarch64-softmmu", debug=False)
 if args["setup_kernel"]:
-    tools.setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
+    tools.setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=system_path("KERNEL_ROOT"))
 if args["build_qemu"]:
-    tools.build_qemu(qemu_dir=os.getenv("QEMU_ROOT"))
+    tools.build_qemu(qemu_dir=system_path("QEMU_ROOT"))
 if args["build_kernel"]:
-    tools.build_kernel(kernel_dir=os.getenv("KERNEL_ROOT"))
+    tools.build_kernel(kernel_dir=system_path("KERNEL_ROOT"))
 
 if args["create_image"]:
-    create_qemu_image(img_path=os.getenv("QEMU_IMG"))
+    create_qemu_image(img_path=system_path("QEMU_IMG"))
 
 if args["topo"]:
     topo = cxl.find_topology(args["topo"])
@@ -471,7 +472,7 @@ if args["dcd_test"]:
 if args["issue_qmp"]:
     tools.issue_qmp_cmd(args["issue_qmp"])
 
-cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
+cxl_test_tool_dir=system_path("cxl_test_tool_dir")
 if args["setup_mctp"]:
     mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
 if args["try_mctp"]:
@@ -494,15 +495,15 @@ if args["start_vm"]:
         run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH)
 
 if args["setup_kernel_arm"]:
-    kernel_dir=os.getenv("KERNEL_ROOT")
+    kernel_dir=system_path("KERNEL_ROOT")
     arm.setup_kernel_arm(kernel=kernel_dir)
 if args["build_kernel_arm"]:
-    kernel_dir=os.getenv("KERNEL_ROOT")
+    kernel_dir=system_path("KERNEL_ROOT")
     arm.build_kernel_arm(kernel=kernel_dir)
 if args["start_arm"]:
     if not topo:
         topo=cxl.find_topology("RP1")
-    qemu_dir=os.getenv("QEMU_ROOT")
-    kernel_img=os.getenv("KERNEL_ROOT")+"/arch/arm64/boot/Image"
-    bios=os.getenv("BIOS")
+    qemu_dir=system_path("QEMU_ROOT")
+    kernel_img=system_path("KERNEL_ROOT")+"/arch/arm64/boot/Image"
+    bios=system_path("BIOS")
     arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img, bios=bios)

@@ -95,6 +95,12 @@ def install_packages_on_vm(package_str, user="root", host="localhost", port="202
     rs=execute_on_vm(cmd)
     print(rs)
 
+def system_path(name):
+    path=os.getenv(name)
+    if not path:
+        return ""
+    return os.path.expanduser(path.strip("\""))
+
 def append_to_file(file, s):
     with open(file, "a") as f:
         f.write(s)
@@ -104,10 +110,10 @@ def write_to_file(file, s):
         f.write(s)
 
 def process_id(name):
-    for process in psutil.process_iter(['name']):
+    for process in psutil.process_iter(['name', 'username']):
         try:
             # Check if the process name matches
-            if name in process.info['name']: 
+            if name in process.info['name'] and process.info['username'] == sh_cmd("whoami"): 
                 return process.pid
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             # Handle the cases where the process might terminate during iteration
@@ -266,7 +272,7 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
                 if rs == "1":
                     subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
                 elif rs == "2":
-                    tool_dir=os.getenv("cxl_test_tool_dir").strip("\"")
+                    tool_dir=system_path("cxl_test_tool_dir")
                     cmd="cp %s/kconfig.example %s/.config"%(tool_dir, kernel_dir)
                     sh_cmd(cmd, echo=True)
                 else:
@@ -281,7 +287,7 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
             if rs == "1":
                 subprocess.run("cd %s; make menuconfig"%kernel_dir, shell=True)
             elif rs == "2":
-                cmd="cp %s/kconfig.example %s/.config"%(os.getenv("cxl_test_tool_dir"), kernel_dir)
+                cmd="cp %s/kconfig.example %s/.config"%(system_path("cxl_test_tool_dir"), kernel_dir)
                 sh_cmd(cmd, echo=True)
             else:
                 print("Unknown choice, exit")
@@ -317,7 +323,10 @@ def vm_is_running():
     """Check if any process with the given name is alive."""
     # Iterate over all running processes
     name="qemu-system"
-    for process in psutil.process_iter(['name']):
+    usr=sh_cmd("whoami")
+    for process in psutil.process_iter(['name', 'username']):
+        if usr != process.info["username"]:
+            continue
         try:
             # Check if the process name matches
             if name in process.info['name']: 
@@ -368,13 +377,13 @@ def run_with_dcd_mctp():
     return has_dcd,has_mctp
 
 def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
-    user=sh_cmd("whoami")
     if vm_is_running():
         print("VM is running, exit")
         return;
     
     print("Starting VM...")
     bin=qemu
+    home=os.getenv("HOME")
     cmd=" -s "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
@@ -382,10 +391,10 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
             " -nographic " + \
             " "+SHARED_CFG+" "+ net_config + " "+\
             " -monitor telnet:127.0.0.1:12345,server,"+wait_flag+\
-            " -drive file="+os.getenv("QEMU_IMG")+",index=0,media=disk,format="+format+\
+            " -drive file="+system_path("QEMU_IMG")+",index=0,media=disk,format="+format+\
             " -machine q35,cxl=on -cpu qemu64,mce=on -m 8G,maxmem=32G,slots=8 "+ \
             " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
-            " -virtfs local,path=/home/"+user+",mount_tag=homeshare,security_model=mapped "+ topo
+            " -virtfs local,path=%s"%home+",mount_tag=homeshare,security_model=mapped "+ topo
 
     write_to_file("/tmp/run-cmd", cmd)
     bg_cmd(bin+cmd)
