@@ -235,6 +235,8 @@ run_qemu() {
         fi
     fi
 
+    home=$HOME
+
     echo "${QEMU} -s \
         -kernel ${KERNEL_PATH} \
         -append \"${KERNEL_CMD}\" \
@@ -249,7 +251,7 @@ run_qemu() {
         -monitor telnet:127.0.0.1:12345,server,$wait_flag \
         $extra_opts \
         -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped \
-        -virtfs local,path=/home/`whoami`,mount_tag=homeshare,security_model=mapped \
+        -virtfs local,path=$home,mount_tag=homeshare,security_model=mapped \
         $topo" > $cmd_file
 
     ${QEMU} -s $extra_opts \
