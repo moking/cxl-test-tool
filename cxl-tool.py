@@ -68,8 +68,8 @@ def read_config(conf):
                     has_quote=True
                     val=val.strip("\"")
                 new=expend_variable(val)
-                user=sh_cmd("whoami")
-                new=new.replace("~", "/home/"+user)
+                #if new.startswith("~"):
+                    #new=os.environ.get('HOME')+new[1:]
                 if has_quote:
                     os.environ[name]="\""+new+"\""
                 else:

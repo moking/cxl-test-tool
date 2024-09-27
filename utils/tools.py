@@ -61,7 +61,8 @@ def install_packages(package_str):
         return;
     cmd="sudo apt-get install -y %s"%" ".join(packages)
     print(cmd)
-    rs=sh_cmd(cmd)
+    #rs=sh_cmd(cmd)
+    exec_shell_direct(cmd)
     for i in packages:
         if not package_installed(i):
             print("%s not installed"%i)
@@ -189,6 +190,7 @@ def issue_qmp_cmd(file):
 def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True):
     git_clone=True
     qemu_dir=os.path.expanduser(qemu_dir)
+
     if not qemu_dir:
         return
 
