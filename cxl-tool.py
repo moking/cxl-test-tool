@@ -400,6 +400,13 @@ KERNEL_PATH=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 if args["setup_qemu"]:
     tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"))
 if args["setup_qemu_arm"]:
+    print("NOTE: arm cxl support for Qemu has not upstreamed yet, make sure you use jonathans local tree and branch")
+    print("url: https://gitlab.com/jic23/qemu.git")
+    print("branch: cxl-2024-08-20")
+    ch=input("Are you want to continue without update .vars.config? (Y/N):")
+    if not ch or ch.lower() != "y":
+        exit(0)
+
     tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=os.getenv("QEMU_ROOT"), arch="aarch64-softmmu", debug=False)
 if args["setup_kernel"]:
     tools.setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=os.getenv("KERNEL_ROOT"))
