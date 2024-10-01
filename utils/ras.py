@@ -24,7 +24,7 @@ def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="s
     cmd="install rasdaemon..."
     print(cmd)
 
-    tools.install_packages_on_vm("git libtraceevent-dev libtraceevent1 pkg-config")
+    tools.install_packages_on_vm("git libtraceevent-dev libtraceevent1 pkg-config dh-autoreconf")
     if tools.path_exist_on_vm(dire):
         choice=input("%s exists, delete it before git clone (Y/N): "%dire)
         if choice and choice.lower() == "y":
@@ -122,8 +122,7 @@ def install_ras_tools():
     install_rasdaemon();
     install_mce_inject()
     install_mce_test()
-    install_mce_test()
-
+    install_aer_inject();
 
 def inject_aer(file, aer_tool_path="~/aer-inject"):
     print("Job: inject aer")
