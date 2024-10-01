@@ -316,8 +316,16 @@ def build_kernel(kernel_dir):
         print("No kernel source code found, may need run --setup-kernel")
         return
     cmd="cd %s; make -j 16"%kernel_dir
-    exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
+    exec_shell_direct(cmd, echo=True)
     exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+
+def configure_kernel(kernel_dir):
+    kernel_dir=os.path.expanduser(kernel_dir)
+    if not os.path.exists(kernel_dir):
+        print("No kernel source code found, may need run --setup-kernel")
+        return
+    cmd="cd %s; make menuconfig"%kernel_dir
+    exec_shell_direct(cmd, echo=True)
 
 def vm_is_running():
     """Check if any process with the given name is alive."""

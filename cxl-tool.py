@@ -358,6 +358,7 @@ parser.add_argument('--destroy-region', help='destroy cxl region', required=Fals
 parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
 parser.add_argument('--setup-qemu-arm', help='setup qemu for aarch64', action='store_true')
 parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
+parser.add_argument('--kconfig', help='configure kernel with menuconfig', action='store_true')
 parser.add_argument('-BQ', '--build-qemu', help='build qemu', action='store_true')
 parser.add_argument('-BK', '--build-kernel', help='build kernel', action='store_true')
 parser.add_argument('--create-image', help='create a qemu image', action='store_true')
@@ -415,6 +416,8 @@ if args["build_qemu"]:
     tools.build_qemu(qemu_dir=system_path("QEMU_ROOT"))
 if args["build_kernel"]:
     tools.build_kernel(kernel_dir=system_path("KERNEL_ROOT"))
+if args["kconfig"]:
+    tools.configure_kernel(kernel_dir=system_path("KERNEL_ROOT"))
 
 if args["create_image"]:
     create_qemu_image(img_path=system_path("QEMU_IMG"))
