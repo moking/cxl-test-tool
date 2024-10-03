@@ -24,7 +24,7 @@ def install_rasdaemon(url="https://github.com/moking/rasdaemon-clone", branch="s
     cmd="install rasdaemon..."
     print(cmd)
 
-    tools.install_packages_on_vm("git libtraceevent-dev libtraceevent1 pkg-config dh-autoreconf")
+    tools.install_packages_on_vm("git libtraceevent-dev libtraceevent1 pkg-config dh-autoreconf dmidecode")
     if tools.path_exist_on_vm(dire):
         choice=input("%s exists, delete it before git clone (Y/N): "%dire)
         if choice and choice.lower() == "y":
