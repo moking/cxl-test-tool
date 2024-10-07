@@ -53,7 +53,7 @@ def prepare_fm_test(topo="FM"):
 
     os.environ["KERNEL_ROOT"]=dire
 
-    test_dir=os.getenv("cxl_test_tool_dir").strip("\"")
+    test_dir=tools.system_path("cxl_test_tool_dir")
     kconfig=test_dir+"/test-workflows/mctp/kernel.config"
     tools.setup_kernel(url=url, branch=branch, kernel_dir=dire, kconfig=kconfig)
 
@@ -79,7 +79,7 @@ def prepare_fm_test(topo="FM"):
     #tools.sh_cmd(cmd, echo=True)
     topo=cxl.find_topology(topo)
     tools.run_qemu(qemu=QEMU,topo=topo, kernel=os.getenv("KERNEL_ROOT")+"/arch/x86/boot/bzImage")
-    cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
+    cxl_test_tool_dir=tools.system_path("cxl_test_tool_dir")
     mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
 
 def run_fm_test():
@@ -113,7 +113,7 @@ def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main
     tools.execute_on_vm(cmd, echo=True)
 
 def setup_vm_for_mctp(kernel="~/cxl/linux-v6.6-rc6", qemu_dir="~/cxl/qemu-mctp"):
-    cxl_test_tool_dir=os.getenv("cxl_test_tool_dir")
+    cxl_test_tool_dir=tools.system_path("cxl_test_tool_dir")
     if tools.vm_is_running():
         dcd,mctp = tools.run_with_dcd_mctp()
         if mctp:
