@@ -83,15 +83,15 @@ def find_topology(top):
 def load_driver(user="root", host="localhost", port="2024"):
     tools.execute_on_vm("modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem")
     tools.execute_on_vm("modprobe -a nd_pmem")
-    tools.execute_on_vm("modprobe -a dax device_dax")
+    tools.execute_on_vm("modprobe -a dax device_dax dax_pmem")
 
     rs=tools.execute_on_vm("lsmod")
     print(rs)
 
 def unload_driver(user="root", host="localhost", port="2024"):
-    tools.execute_on_vm("rmmod -f cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
-    tools.execute_on_vm("rmmod -f nd_pmem")
-    tools.execute_on_vm("rmmod -f device_dax dax nd_btt libnvdimm")
+    tools.execute_on_vm("modprobe -r cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
+    tools.execute_on_vm("modprobe -r nd_pmem")
+    tools.execute_on_vm("modprobe -r device_dax dax nd_btt libnvdimm dax_pmem")
 
     rs=tools.execute_on_vm("lsmod")
     print(rs)
@@ -292,7 +292,7 @@ def create_dax_device(region, echo=False):
     if not data:
         return ""
 
-    return data[0]["chardev"]
+    return data[-1]["chardev"]
 
 
 def create_dc_region(memdev):
