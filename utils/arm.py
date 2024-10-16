@@ -43,12 +43,6 @@ wait_flag="nowait"
 format="raw"
 num_cpus="4"
 accel_mode="tcg"
-ssh_port="2024"
-status_file="/tmp/qemu-status"
-run_log="/tmp/qemu.log"
-net_config="-netdev user,id=network0,hostfwd=tcp::%s-:22 -device e1000,netdev=network0"%ssh_port
-SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
-initrd_img="/home/fan/arm/initrd.img-6.1.0-25-arm64"
 
 def copy_host_ssh_key(img, img_format="raw"):
     rs = False
@@ -56,11 +50,13 @@ def copy_host_ssh_key(img, img_format="raw"):
         print("%s image not found"%img)
         return False
 
-    cmd = "mkdir /tmp/mnt"
+    suffix=tool.ssh_cmd("date +%N")
+    mnt = "/tmp/mnt-%s"%suffix
+    cmd = "mkdir %s"%mnt
     tool.sh_cmd(cmd)
 
     if img_format == "raw":
-        cmd = "sudo mount %s /tmp/mnt"%img
+        cmd = "sudo mount %s %s"%(img, mnt)
         tool.sh_cmd(cmd)
     else:
         cmd = "sudo modprobe nbd"
@@ -68,14 +64,14 @@ def copy_host_ssh_key(img, img_format="raw"):
         cmd = "sudo qemu-nbd --connect=/dev/nbd0 %s"%img
         tool.sh_cmd(cmd, echo=True)
         time.sleep(1)
-        cmd = "sudo mount /dev/nbd0p1 /tmp/mnt"
+        cmd = "sudo mount /dev/nbd0p1 %s"%mnt
         tool.sh_cmd(cmd, echo=True)
 
-    cmd = "mount | grep -c /tmp/mnt"
+    cmd = "mount | grep -c %s"%mnt
     cnt = tool.sh_cmd(cmd)
     if cnt == "0":
         print("Mount image seems failed, please check")
-        cmd = "sudo umount /tmp/mnt"
+        cmd = "sudo umount %s"%mnt
         tool.sh_cmd(cmd, echo=True)
         if img_format != "raw":
             cmd = "sudo qemu-nbd -d /dev/nbd0"
@@ -85,16 +81,17 @@ def copy_host_ssh_key(img, img_format="raw"):
     files = tool.sh_cmd(cmd)
     files=files.split()
     for f in files:
-        cmd = "cat ~/.ssh/%s | sudo tee %s;"%(f, "/tmp/mnt/root/.ssh/authorized_keys")
+        cmd = "cat ~/.ssh/%s | sudo tee %s;"%(f, "%s/root/.ssh/authorized_keys"%mnt)
         tool.sh_cmd(cmd,echo=True)
         rs = True
         break
 
-    cmd = "sudo umount /tmp/mnt"
+    cmd = "sudo umount %s"%mnt
     tool.sh_cmd(cmd, echo=True)
     if img_format != "raw":
         cmd = "sudo qemu-nbd -d /dev/nbd0"
         print(tool.sh_cmd(cmd, echo=True))
+    sh_cmd("rmdir %s"%mnt)
     return rs
 
 
@@ -196,6 +193,8 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
         format = "qcow2"
     else:
         format="raw"
+    SHARED_CFG=tool.system_env("SHARED_CFG")
+    net_config=tool.system_env("net_config")
     args = " %s"%extra_opts +\
             " -M virt,nvdimm=on,gic-version=3,cxl=on,ras=on"+\
             " -m 4G,maxmem=8G,slots=8"+\
@@ -216,7 +215,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
 #-M virt,nvdimm=on,gic-version=3,cxl=on -m 4g,maxmem=8G,slots=8 -cpu max -smp 4 -kernel Image -drive if=none,file=debian.qcow2,format=qcow2,id=hd -device pcie-root-port,id=root_port1 -device virtio-blk-pci,drive=hd -netdev type=user,id=mynet,hostfwd=tcp::5555-:22 -qmp tcp:localhost:4445,server=on,wait=off -device virtio-net-pci,netdev=mynet,id=bob -nographic -no-reboot -append 'earlycon root=/dev/vda1 fsck.mode=skip tp_printk maxcpus=4' -monitor telnet:127.0.0.1:1234,server,nowait -bios QEMU_EFI.fd -object memory-backend-ram,size=4G,id=mem0 -numa node,nodeid=0,cpus=0-3,memdev=mem0
 
     print(bin+args)
-    tool.write_to_file("/tmp/run-cmd", bin+args)
+    tool.write_to_file(system_env("cxl_test_log_dir")+"/run-cmd", bin+args)
 
     run_mode = input("Do you want to run VM in current terminal (Y/N): ")
     if run_mode and run_mode.lower() == "y":
@@ -236,9 +235,12 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
             return
         rs = tool.execute_on_vm("ls > /dev/null; echo $?")
     print("VM is ready!")
+    status_file=tool.system_env("cxl_test_log_dir") + "/qemu-status"
+    topo_file=tool.system_env("cxl_test_log_dir") + "/topo"
+    ssh_port = tool.system_env("ssh_port")
     if tool.vm_is_running():
         tool.write_to_file(status_file, "QEMU:running")
-        tool.write_to_file("/tmp/topo", topo);
+        tool.write_to_file(topo_file, topo);
         cmd="mount -t 9p -o trans=virtio modshare /lib/modules"
         tool.execute_on_vm(cmd, echo=True)
         cmd="mount | grep -c modules"
@@ -251,6 +253,6 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
         print("QEMU instance is up, access it: ssh root@localhost -p %s"%ssh_port)
     else:
         tool.write_to_file(status_file, "")
-        print("Start Qemu failed, check /tmp/qemu.log for more information")
+        print("Start Qemu failed, check %s/qemu.log for more information"%tool.system_env("cxl_test_log_dir"))
 
 

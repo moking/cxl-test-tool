@@ -18,13 +18,33 @@ def exec_shell_direct(cmd, echo=False):
         print(cmd)
     subprocess.run(cmd, shell=True)
 
-def exec_shell_remote_direct(cmd, ssh_port="2024", echo=False):
+def system_env(name):
+    if not name:
+        return ""
+    value = os.getenv(name)
+    if not value:
+        if name == "ssh_port":
+            return "2024"
+        elif "branch" in name:
+            return "master"
+        elif name == "cxl_test_log_dir":
+            return "/tmp/cxl-logs"
+        else:
+            print("env %s unknown"%name)
+            return ""
+    else:
+        return value.strip("\"")
+
+def exec_shell_remote_direct(cmd, echo=False):
+    ssh_port=system_env("ssh_port")
     cmd="ssh root@localhost -p %s \"%s\""%(ssh_port,cmd)
     if echo:
         print(cmd)
     subprocess.run(cmd, shell=True)
 
-def bg_cmd(cmd, run_log="/tmp/qemu.log", echo=False):
+def bg_cmd(cmd, echo=False):
+    log_dir=system_path("cxl_test_log_dir")
+    run_log = log_dir+"/qemu.log"
     fd=open(run_log, "w")
     if echo:
         print(cmd)
@@ -120,7 +140,8 @@ def process_id(name):
             continue
     return -1
 
-def execute_on_vm(cmd, ssh_port="2024", echo=False):
+def execute_on_vm(cmd, echo=False):
+    ssh_port = system_env("ssh_port")
     if not vm_is_running():
         print("VM is not running, exit")
         return ""
@@ -131,7 +152,7 @@ def path_exist_on_vm(path, port="2024"):
         print("VM is not running, exit")
         return False
     cmd="if [ -e %s ]; then echo 1; else echo 0; fi"%(path)
-    rs = execute_on_vm(cmd, ssh_port=port)
+    rs = execute_on_vm(cmd)
     if rs != "0":
         return True
     else:
@@ -142,7 +163,7 @@ def command_found_on_vm(cmd, port="2024"):
         print("VM is not running, exit")
         return False
     s="which %s | grep -c %s"%(cmd, cmd)
-    rs = execute_on_vm(s, ssh_port=port)
+    rs = execute_on_vm(s)
     if rs == "0":
         return False
     return True
@@ -359,10 +380,6 @@ wait_flag="nowait"
 format="raw"
 num_cpus="8"
 accel_mode="kvm"
-ssh_port="2024"
-status_file="/tmp/qemu-status"
-run_log="/tmp/qemu.log"
-net_config="-netdev user,id=network0,hostfwd=tcp::%s-:22 -device e1000,netdev=network0"%ssh_port
 SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
 
 def run_with_dcd_mctp():
@@ -390,6 +407,13 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
         print("VM is running, exit")
         return;
     
+    ssh_port=system_env("ssh_port")
+    net_config = system_env("net_config")
+    log_dir = system_path("cxl_test_log_dir")
+    if not log_dir:
+        log_dir = "/tmp/"
+    elif not os.path.exists(log_dir):
+        sh_cmd("mkdir %s"%log_dir, echo=True)
     print("Starting VM...")
     bin=qemu
     home=os.getenv("HOME")
@@ -405,14 +429,15 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
             " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
             " -virtfs local,path=%s"%home+",mount_tag=homeshare,security_model=mapped "+ topo
 
-    write_to_file("/tmp/run-cmd", cmd)
+    write_to_file("%s/run-cmd"%log_dir, cmd)
     bg_cmd(bin+cmd)
+    status_file="%s/qemu-status"%log_dir
     if vm_is_running():
         write_to_file(status_file, "QEMU:running")
-        write_to_file("/tmp/topo", topo);
+        write_to_file("%s/topo"%log_dir, topo);
         print("QEMU instance is up, access it: ssh root@localhost -p %s"%ssh_port)
     else:
         write_to_file(status_file, "")
-        print("Start Qemu failed, check /tmp/qemu.log for more information")
+        print("Start Qemu failed, check %s/qemu.log for more information"%log_dir)
 
 
