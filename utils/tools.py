@@ -407,6 +407,13 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
         print("VM is running, exit")
         return;
     
+    # update the image directory
+    host_dir=system_env("cxl_host_dir")
+    if host_dir:
+        topo = topo.replace("/tmp",host_dir)
+        if not os.path.exists(host_dir):
+            sh_cmd("mkdir -p %s"%host_dir)
+
     ssh_port=system_env("ssh_port")
     net_config = system_env("net_config")
     log_dir = system_path("cxl_test_log_dir")
