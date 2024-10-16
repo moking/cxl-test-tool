@@ -29,6 +29,7 @@ from utils.terminal import gdb_on_vm as gdb_on_vm
 from utils.debug import gdb_process as gdb_process
 from utils.cxl_topology_parser import gen_cxl_topology
 import utils.arm as arm
+from utils.config import parse_config as parse_config
 
 ndctl_dir="~/ndctl"
 
@@ -75,6 +76,7 @@ def read_config(conf):
                     os.environ[name]="\""+new+"\""
                 else:
                     os.environ[name]=new
+                print(os.environ[name])
 
 
 def compile_ndctl(dir):
@@ -387,15 +389,21 @@ if args["verbose"]:
 user=sh_cmd("whoami")
 tmp_config="/tmp/.vars.config"
 config=".vars.config"
+env_dict = {}
 if os.path.exists(config):
-    read_config(config)
+    env_dict = parse_config(config)
     if not os.path.exists(tmp_config) or not filecmp.cmp(config, tmp_config):
         shutil.copy(config, tmp_config)
 elif os.path.exists(tmp_config):
-    read_config(tmp_config)
+    env_dict = parse_config(tmp_config)
 else:
     print("No .vars.config file found! Use run_vars.example as an example to create one")
     exit(1)
+if args["verbose"]:
+    print("\nPrint out the environment variable:")
+    print(env_dict)
+    print("\n")
+
 QEMU=system_path("QEMU_ROOT")+"/build/qemu-system-x86_64"
 KERNEL_PATH=system_path("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
