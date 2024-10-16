@@ -146,7 +146,7 @@ def gdb_kernel():
     original_sigint_handler = signal.getsignal(signal.SIGINT)
     try:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        cmd="cd %s; gdb --tui ./vmlinux"%path
+        cmd="cd %s; gdb ./vmlinux"%path
         subprocess.run(cmd, shell=True)
     finally:
         signal.signal(signal.SIGINT, original_sigint_handler)
@@ -232,7 +232,7 @@ mount -t 9p -o trans=virtio modshare /lib/modules
     tools.exec_shell_direct(cmd, echo=True)
     cmd="sudo chroot %s apt-get update"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
-    cmd="sudo chroot %s apt-get install -y ssh netplan.io openvswitch-switch"%tmp_dir
+    cmd="sudo chroot %s apt-get install -y ssh git netplan.io openvswitch-switch"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
     cmd="sudo umount %s"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
