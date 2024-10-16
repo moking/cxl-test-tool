@@ -12,6 +12,12 @@
 4. ...
 </pre>
 
+NOTE: the tool needs python3 and some other packages.
+Before starting to use it.
+Make sure you have git, ssh, python3, python-is-python3, gdb, gcc installed.
+Also, before creating the qemu image, generate ssh key first with ssh-keygen.
+The created image uses the public key to enable passwordless access.
+
 # run configuration file
 All the run configuration options are defined in .vars.config. This options will control where the directory of qemu, kernel, and which qemu image we want to use.
 Also, all the URLs related to git clone operation is defined there.
