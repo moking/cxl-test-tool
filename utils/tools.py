@@ -193,7 +193,7 @@ def issue_qmp_cmd(file):
     cmd="cat %s|ncat localhost %s"%(file, port)
     sh_cmd(cmd, echo=True)
 
-def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True):
+def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfig=True):
     git_clone=True
     qemu_dir=os.path.expanduser(qemu_dir)
 
@@ -224,11 +224,12 @@ def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True):
         cmd="git clone -b %s --single-branch %s %s"%(branch, url, qemu_dir)
         rs=sh_cmd(cmd, echo=True)
         print(rs)
-    if debug:
-        cmd="cd %s;./configure --target-list=%s --enable-debug"%(qemu_dir, arch)
-    else:
-        cmd="cd %s;./configure --target-list=%s --disable-debug-info"%(qemu_dir, arch)
-    sh_cmd(cmd, echo=True)
+    if reconfig:
+        if debug:
+            cmd="cd %s;./configure --target-list=%s --enable-debug"%(qemu_dir, arch)
+        else:
+            cmd="cd %s;./configure --target-list=%s --disable-debug-info"%(qemu_dir, arch)
+        sh_cmd(cmd, echo=True)
     cmd="cd %s; make -j 16"%qemu_dir
     sh_cmd(cmd, echo=True)
     cmd="cd %s; ls build/qemu-system-*"%qemu_dir
