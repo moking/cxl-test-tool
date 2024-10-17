@@ -30,7 +30,7 @@ def system_env(name):
         elif name == "cxl_test_log_dir":
             return "/tmp/cxl-logs"
         else:
-            print("env %s unknown"%name)
+            print("env[%s] undefined, return empty"%name)
             return ""
     else:
         return value.strip("\"")
@@ -323,6 +323,8 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
     if recompile:
         exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
         exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+    else:
+        print("Run --build-kernel to configure and compile kernel")
 
 def build_qemu(qemu_dir):
     qemu_dir=os.path.expanduser(qemu_dir)
@@ -339,6 +341,10 @@ def build_kernel(kernel_dir):
     if not os.path.exists(kernel_dir):
         print("No kernel source code found, may need run --setup-kernel")
         return
+    ans = input("Do you want to run make menuconfig first before buidling (Y/N): ")
+    if ans.lower() == "y":
+        cmd = "cd %s; make menuconfig"%kernel_dir
+        exec_shell_direct(cmd, echo=True)
     cmd="cd %s; make -j 16"%kernel_dir
     exec_shell_direct(cmd, echo=True)
     exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
