@@ -44,6 +44,8 @@ def exec_shell_remote_direct(cmd, echo=False):
 
 def bg_cmd(cmd, echo=False):
     log_dir=system_path("cxl_test_log_dir")
+    if not log_dir:
+        log_dir = "/tmp/"
     run_log = log_dir+"/qemu.log"
     fd=open(run_log, "w")
     if echo:
