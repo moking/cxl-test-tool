@@ -239,7 +239,8 @@ mount -t 9p -o trans=virtio modshare /lib/modules
     cmd="sudo umount %s"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
 
-    cmd="ssh-keygen -f ~/.ssh/known_hosts -R [localhost]:2024"
+    port = tools.system_env("ssh_port")
+    cmd="ssh-keygen -f ~/.ssh/known_hosts -R [localhost]:%s"%port
     tools.exec_shell_direct(cmd, echo=True)
     cmd="ls %s -lh"%img_path
     tools.exec_shell_direct(cmd, echo=True)

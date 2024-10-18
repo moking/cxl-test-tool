@@ -226,7 +226,10 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
         tool.bg_cmd(bin+args)
     print("INFO: if cannot ssh to VM after boot, make sure the ssh service is enabled on the VM, Try to login directly by using exec_shell_direct as comment above!!!")
     print("Wait for the VM to be ready...")
-    cmd = "ssh root@localhost -p 2024 \"ls; echo $?\""
+    port = tool.system_env("ssh_port")
+    if not port:
+        port = 2024
+    cmd = "ssh root@localhost -p %s \"ls; echo $?\""%port
     tool.exec_shell_direct(cmd)
     rs = tool.execute_on_vm("ls > /dev/null; echo $?")
     while rs != "0":

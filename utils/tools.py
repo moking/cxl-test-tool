@@ -54,7 +54,8 @@ def bg_cmd(cmd, echo=False):
     time.sleep(2)
     subprocess.run(['stty', 'sane'])
 
-def copy_to_remote(src, dst="/tmp/", user="root", host="localhost", port="2024"):
+def copy_to_remote(src, dst="/tmp/", user="root", host="localhost"):
+    port=system_env("ssh_port")
     if not src:
         return;
     cmd="scp -r -P %s %s %s@%s:%s 2>&1 1>/dev/null"%(port, src, user, host, dst)
@@ -105,7 +106,8 @@ def package_installed_on_vm(package):
         return False
 
 
-def install_packages_on_vm(package_str, user="root", host="localhost", port="2024"):
+def install_packages_on_vm(package_str, user="root", host="localhost"):
+    ssh_port=system_env("ssh_port")
     packages=[]
     for i in package_str.split():
         if not package_installed_on_vm(i):
@@ -149,7 +151,8 @@ def execute_on_vm(cmd, echo=False):
         return ""
     return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd), echo=echo)
 
-def path_exist_on_vm(path, port="2024"):
+def path_exist_on_vm(path):
+    ssh_port=system_env("ssh_port")
     if not vm_is_running():
         print("VM is not running, exit")
         return False
@@ -160,7 +163,7 @@ def path_exist_on_vm(path, port="2024"):
     else:
         return False
 
-def command_found_on_vm(cmd, port="2024"):
+def command_found_on_vm(cmd):
     if not vm_is_running():
         print("VM is not running, exit")
         return False
