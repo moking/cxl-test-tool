@@ -6,7 +6,8 @@ import utils.tools as tool
 
 password = None  # Use None if using a private key
 
-def gdb_on_vm(prog, hostname="localhost", username="root"):
+def gdb_on_vm(prog, hostname="localhost"):
+    username = tool.system_env("vm_usr")
     if not tool.vm_is_running():
         print("VM is not running, exit")
         return
@@ -15,7 +16,8 @@ def gdb_on_vm(prog, hostname="localhost", username="root"):
         port = 2024
     subprocess.run("ssh %s@%s -p %s \"%s\""%(username, hostname, port, prog), shell=True)
 
-def login_vm(hostname="localhost", username="root"):
+def login_vm(hostname="localhost"):
+    username = tool.system_env("vm_usr")
     if not tool.vm_is_running():
         print("VM is not running, exit")
         return

@@ -11,6 +11,8 @@ edac_debug=""
 SHARED_CFG=""
 ssh_port=2024
 net_config="-netdev user,id=network0,hostfwd=tcp::${ssh_port}-:22 -device e1000,netdev=network0"
+#user name for the VM, by default it is "root"
+vm_usr="root"
 
 #section: needed if need to git pull for setup
 

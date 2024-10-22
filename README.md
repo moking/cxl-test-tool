@@ -4,7 +4,8 @@
 * If you like the tool, please star it to attract more people's interests.
 
 # Recent important changes.
-****WIP: recently I started to move the code to python so it is easier to support more complicated use workflow. cxl-tool.py is the new main file.**
+**Now you can test bare metal with simple configuration, see commit 87697211e3a96aaec946baa57e9b18f6d31401f8 **
+****Done: recently I started to move the code to python so it is easier to support more complicated use workflow. cxl-tool.py is the new main file.**
 <pre>
 1. Updated DCD test workflow;
 2. Add mctp setup;

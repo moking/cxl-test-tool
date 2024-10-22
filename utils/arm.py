@@ -229,7 +229,8 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
     port = tool.system_env("ssh_port")
     if not port:
         port = 2024
-    cmd = "ssh root@localhost -p %s \"ls; echo $?\""%port
+    usr=tool.system_env("vm_usr")
+    cmd = "ssh %s@localhost -p %s \"ls; echo $?\""%(usr, port)
     tool.exec_shell_direct(cmd)
     rs = tool.execute_on_vm("ls > /dev/null; echo $?")
     while rs != "0":

@@ -25,6 +25,8 @@ def system_env(name):
     if not value:
         if name == "ssh_port":
             return "2024"
+        if name == "vm_usr":
+            return "root"
         elif "branch" in name:
             return "master"
         elif name == "cxl_test_log_dir":
@@ -37,7 +39,8 @@ def system_env(name):
 
 def exec_shell_remote_direct(cmd, echo=False):
     ssh_port=system_env("ssh_port")
-    cmd="ssh root@localhost -p %s \"%s\""%(ssh_port,cmd)
+    usr = system_env("vm_usr")
+    cmd="ssh %s@localhost -p %s \"%s\""%(usr, ssh_port,cmd)
     if echo:
         print(cmd)
     subprocess.run(cmd, shell=True)
@@ -146,10 +149,11 @@ def process_id(name):
 
 def execute_on_vm(cmd, echo=False):
     ssh_port = system_env("ssh_port")
+    usr = system_env("vm_usr")
     if not vm_is_running():
         print("VM is not running, exit")
         return ""
-    return sh_cmd("ssh root@localhost -p %s \"%s\""%(ssh_port,cmd), echo=echo)
+    return sh_cmd("ssh %s@localhost -p %s \"%s\""%(usr, ssh_port,cmd), echo=echo)
 
 def path_exist_on_vm(path):
     ssh_port=system_env("ssh_port")
@@ -361,6 +365,11 @@ def configure_kernel(kernel_dir):
     exec_shell_direct(cmd, echo=True)
 
 def vm_is_running():
+    # Check bare metal if ssh port is 22.
+    ssh_port = system_env("ssh_port")
+    if ssh_port == "22":
+        print("Notice: You are using bare metal, be carefully!!!")
+        return True
     """Check if any process with the given name is alive."""
     # Iterate over all running processes
     name="qemu-system"
@@ -453,7 +462,8 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
     if vm_is_running():
         write_to_file(status_file, "QEMU:running")
         write_to_file("%s/topo"%log_dir, topo);
-        print("QEMU instance is up, access it: ssh root@localhost -p %s"%ssh_port)
+        usr = system_path("vm_usr")
+        print("QEMU instance is up, access it: ssh %s@localhost -p %s"%(usr, ssh_port))
     else:
         write_to_file(status_file, "")
         print("Start Qemu failed, check %s/qemu.log for more information"%log_dir)
