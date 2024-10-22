@@ -198,6 +198,12 @@ def create_qemu_image(img_path):
     print(cmd)
     cmd="sudo mkdir %s/root/.ssh"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
+
+    if not os.path.exists(os.path.expanduser("~/.ssh")):
+        print("Note: .ssh not found on the host, continue to generate ssh key")
+        cmd = "ssh-keygen"
+        tools.exec_shell_direct(cmd, echo=True)
+
     pub_files = [f for f in os.listdir(os.path.expanduser("~/.ssh")) if f.endswith('.pub')]
     if not pub_files:
         print("Warning: ssh public key file not found on the host, need to mount the image and added to authorized_keys on the VM")
