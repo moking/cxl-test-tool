@@ -434,6 +434,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
         print("VM is running, exit")
         return;
     
+    extra_opts = system_env("qemu_extra_opt")
     # update the image directory
     host_dir=system_env("cxl_host_dir")
     if host_dir:

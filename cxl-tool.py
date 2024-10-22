@@ -351,6 +351,7 @@ parser.add_argument('-v','--verbose', help='show more message', action='store_tr
 parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
 parser.add_argument('-T','--topo', help='cxl topology to use', required=False, default="")
 parser.add_argument('-A','--accel', help='accel mode: kvm/tcg', required=False, default="kvm")
+parser.add_argument('-E','--extra', help='extra options when run qemu', required=False, default="")
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
 parser.add_argument('--login', help='login to the VM', action='store_true')
 parser.add_argument('--poweroff', help='poweroff the VM', action='store_true')
@@ -413,6 +414,9 @@ if args["verbose"]:
 
 QEMU=system_path("QEMU_ROOT")+"/build/qemu-system-x86_64"
 KERNEL_PATH=system_path("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
+
+if args["extra"]:
+    os.environ["qemu_extra_opt"] = args["extra"]
 
 if args["setup_qemu"]:
     tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=system_path("QEMU_ROOT"))
