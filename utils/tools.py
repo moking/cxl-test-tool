@@ -343,6 +343,9 @@ def build_qemu(qemu_dir):
     cmd="cd %s; ls build/qemu-system-*"%qemu_dir
     sh_cmd(cmd, echo=True)
 
+def is_bare_metal():
+    ssh_port = system_env("ssh_port")
+    return ssh_port == "22"
 def build_kernel(kernel_dir):
     kernel_dir=os.path.expanduser(kernel_dir)
     if not os.path.exists(kernel_dir):
@@ -355,6 +358,10 @@ def build_kernel(kernel_dir):
     cmd="cd %s; make -j 16"%kernel_dir
     exec_shell_direct(cmd, echo=True)
     exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+    if is_bare_metal():
+        rs = input("Install new kernel to the host (Y/N): ")
+        if rs.lower() == "y":
+            exec_shell_direct("cd %s; sudo make install"%kernel_dir, echo=True)
 
 def configure_kernel(kernel_dir):
     kernel_dir=os.path.expanduser(kernel_dir)
