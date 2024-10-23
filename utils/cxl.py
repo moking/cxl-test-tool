@@ -80,18 +80,30 @@ def find_topology(top):
     else:
         return ""
 
-def load_driver(user="root", host="localhost"):
-    tools.execute_on_vm("modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem")
-    tools.execute_on_vm("modprobe -a nd_pmem")
-    tools.execute_on_vm("modprobe -a dax device_dax dax_pmem")
+def load_driver(host="localhost"):
+    user = tools.system_env("vm_usr")
+    if user == "root":
+        tools.execute_on_vm("modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem")
+        tools.execute_on_vm("modprobe -a nd_pmem")
+        tools.execute_on_vm("modprobe -a dax device_dax dax_pmem")
+    else:
+        tools.execute_on_vm("sudo modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem")
+        tools.execute_on_vm("sudo modprobe -a nd_pmem")
+        tools.execute_on_vm("sudo modprobe -a dax device_dax dax_pmem")
 
     rs=tools.execute_on_vm("lsmod")
     print(rs)
 
-def unload_driver(user="root", host="localhost"):
-    tools.execute_on_vm("modprobe -r cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
-    tools.execute_on_vm("modprobe -r nd_pmem")
-    tools.execute_on_vm("modprobe -r device_dax dax nd_btt libnvdimm dax_pmem")
+def unload_driver(host="localhost"):
+    user = tools.system_env("vm_usr")
+    if user == "root":
+        tools.execute_on_vm("modprobe -r cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
+        tools.execute_on_vm("modprobe -r nd_pmem")
+        tools.execute_on_vm("modprobe -r device_dax dax nd_btt libnvdimm dax_pmem")
+    else:
+        tools.execute_on_vm("sudo modprobe -r cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
+        tools.execute_on_vm("sudo modprobe -r nd_pmem")
+        tools.execute_on_vm("sudo modprobe -r device_dax dax nd_btt libnvdimm dax_pmem")
 
     rs=tools.execute_on_vm("lsmod")
     print(rs)
