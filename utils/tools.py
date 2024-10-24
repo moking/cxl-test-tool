@@ -452,6 +452,11 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
     print("Starting VM...")
     bin=qemu
     home=os.getenv("HOME")
+
+    if accel_mode == "kvm":
+        cmd = "sudo chmod 666 /dev/kvm"
+        sh_cmd(cmd,echo=True)
+
     cmd=" -s "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
