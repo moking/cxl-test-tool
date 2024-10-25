@@ -49,6 +49,7 @@ def create_cxl_pmem(parent_dport, size="512M"):
 
 def create_cxl_vmem(parent_dport, size="512M"):
     global mem_id
+    global serial_id
     hmem, hmem_str=create_object("hmem%s"%mem_id, size=size)
     name = "cxl-memdev%s"%mem_id
     mem_str= "-device cxl-type3,bus=%s,volatile-memdev=%s,id=cxl-vmemdev%s,sn=%s "%(parent_dport, hmem, mem_id, serial_id)
