@@ -19,6 +19,8 @@ def resolve_var(value, env_dict):
         # Replace ${VAR_NAME} with its value from env_dict
         var_value = env_dict.get(var_name, '')
         var_value = var_value.strip("\"").strip("\'")
+        if var_name == "ssh_port" and not var_value:
+            var_value = "2024"
         value = value.replace(f'${{{var_name}}}', var_value)
 
     return value
