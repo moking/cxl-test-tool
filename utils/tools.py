@@ -281,14 +281,14 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
             return
     if git_clone:
         cmd="git clone -b %s --single-branch %s %s"%(branch, url, kernel_dir)
-        sh_cmd(cmd, echo=True)
+        exec_shell_direct(cmd, echo=True)
     else:
         cmd=input("Want to pull updates from remote repo for branch %s (Y/N):"%branch)
         if not cmd:
             cmd="N"
         if cmd.lower() == "y":
             cmd="git pull"
-            sh_cmd(cmd, echo=True)
+            exec_shell_direct(cmd, echo=True)
         else:
             recompile = False
     if not kconfig:
