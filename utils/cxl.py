@@ -193,7 +193,7 @@ def find_mode(memdev):
     for key in data[0].keys():
         if "_size" in key:
             return key.split("_")[0]
-    return "dc"
+    return "dc0"
 
 def find_key_in_json_data(data, key):
     res=[]
