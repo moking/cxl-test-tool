@@ -481,4 +481,41 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
         write_to_file(status_file, "")
         print("Start Qemu failed, check %s/qemu.log for more information"%log_dir)
 
+def git_clone(url, branch, dst_dir):
+    if os.path.exists(dst_dir) and len(os.listdir(dst_dir)) > 0:
+        ch = input("%s exists, do you want to delete it before processing(y/n):")
+        if ch and ch.lower() == "y":
+            cmd = "rf -rf %s"%dst_dir
+            exec_shell_direct(cmd)
+        else:
+            return False
+    cmd="git clone -b %s --single-branch %s %s"%(branch, url, dst_dir)
+    exec_shell_direct(cmd)
+    if os.path.exists(dst_dir) and len(os.listdir(dst_dir)) > 0:
+        return True;
+    else:
+        return False
 
+def remote_directory_empty(path):
+    if not path_exist_on_vm(path):
+        return True
+    cmd = "ls -A %s | wc -l"%path
+    rs = execute_on_vm(cmd, echo=True)
+    if rs != "0":
+        return False
+    return True
+
+def git_clone_on_vm(url, branch, dst_dir):
+    if not remote_directory_empty(dst_dir):
+        ch = input("%s exists, do you want to delete it before processing(y/n):"%dst_dir)
+        if ch and ch.lower() == "y":
+            cmd = "rm -rf %s"%dst_dir
+            exec_shell_remote_direct(cmd)
+        else:
+            return False
+    cmd="git clone -b %s --single-branch %s %s"%(branch, url, dst_dir)
+    exec_shell_remote_direct(cmd)
+    if remote_directory_empty(dst_dir):
+        return True
+    else:
+        return False
