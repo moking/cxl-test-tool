@@ -70,6 +70,29 @@ FM_DCD="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=2
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=6,target=cxl-dcd0 \
  -device virtio-rng-pci,bus=swport1"
 
+SW="-object memory-backend-file,id=cxl-mem0,share=on,mem-path=/tmp/cxltest.raw,size=512M \
+    -object memory-backend-file,id=cxl-mem1,share=on,mem-path=/tmp/cxltest1.raw,size=512M \
+    -object memory-backend-file,id=cxl-mem2,share=on,mem-path=/tmp/cxltest2.raw,size=512M \
+    -object memory-backend-file,id=cxl-mem3,share=on,mem-path=/tmp/cxltest3.raw,size=512M \
+    -object memory-backend-file,id=cxl-lsa0,share=on,mem-path=/tmp/lsa0.raw,size=512M \
+    -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/tmp/lsa1.raw,size=512M \
+    -object memory-backend-file,id=cxl-lsa2,share=on,mem-path=/tmp/lsa2.raw,size=512M \
+    -object memory-backend-file,id=cxl-lsa3,share=on,mem-path=/tmp/lsa3.raw,size=512M \
+    -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1 \
+    -device cxl-rp,port=0,bus=cxl.1,id=root_port0,chassis=0,slot=0 \
+    -device cxl-rp,port=1,bus=cxl.1,id=root_port1,chassis=0,slot=1 \
+    -device cxl-upstream,bus=root_port0,id=us0 \
+    -device cxl-downstream,port=0,bus=us0,id=swport0,chassis=0,slot=4 \
+    -device cxl-type3,bus=swport0,memdev=cxl-mem0,lsa=cxl-lsa0,id=cxl-pmem0 \
+    -device cxl-downstream,port=1,bus=us0,id=swport1,chassis=0,slot=5 \
+    -device cxl-type3,bus=swport1,memdev=cxl-mem1,lsa=cxl-lsa1,id=cxl-pmem1 \
+    -device cxl-downstream,port=2,bus=us0,id=swport2,chassis=0,slot=6 \
+    -device cxl-type3,bus=swport2,memdev=cxl-mem2,lsa=cxl-lsa2,id=cxl-pmem2 \
+    -device cxl-downstream,port=3,bus=us0,id=swport3,chassis=0,slot=7 \
+    -device cxl-type3,bus=swport3,memdev=cxl-mem3,lsa=cxl-lsa3,id=cxl-pmem3 \
+    -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=4k"
+
+
 def find_topology(top):
     if top.upper() == "RP1":
         return RP1
@@ -77,13 +100,15 @@ def find_topology(top):
         return FM
     elif top.upper() == "FM_DCD":
         return FM_DCD
+    elif top.upper() == "SW":
+        return SW
     else:
         return ""
 
 def load_driver(host="localhost"):
     user = tools.system_env("vm_usr")
     if user == "root":
-        tools.execute_on_vm("modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem")
+        tools.execute_on_vm("modprobe -a cxl_acpi cxl_core cxl_pci cxl_port cxl_mem", echo=True)
         tools.execute_on_vm("modprobe -a nd_pmem")
         tools.execute_on_vm("modprobe -a dax device_dax dax_pmem")
     else:

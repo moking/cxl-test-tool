@@ -1,5 +1,6 @@
 import utils.tools as tools
 import os
+import re
 
 ras_service="""
 [Unit]
@@ -130,7 +131,24 @@ def inject_aer(file, aer_tool_path="~/aer-inject"):
         print("EINJ config file not found!")
         print("Example files can be found in einj-examples under the tool directory")
         return
-
+    
+    cmd = "cat %s | grep PCI_ID | tail -1 | awk \'{print $2}\'"%file
+    pci_id = tools.sh_cmd(cmd)
+    cmd = "lspci -v -s %s | grep 'Advanced Error' "%pci_id
+    rs = tools.execute_on_vm(cmd)
+    match = re.search(r'\[(\d+)\]', rs)
+    offset=""
+    if match:
+        offset = match.group(1)
+    else:
+        print("Advanced Error Reporting not found for the device:%s."%pci_id)
+        return
+    cmd = "setpci -s %s 0x%d.l=0"%(pci_id, int(offset) + 0xe)
+    rs = tools.execute_on_vm(cmd, echo = True)
+    print(rs)
+    cmd = "setpci -s %s 0x%d.l=0"%(pci_id, int(offset) + 0x8)
+    rs = tools.execute_on_vm(cmd, echo = True)
+    print(rs)
     tools.copy_to_remote(src=file, dst="/tmp/aer.input")
     cmd="dmesg -C"
     tools.execute_on_vm(cmd, echo=True)
@@ -138,3 +156,52 @@ def inject_aer(file, aer_tool_path="~/aer-inject"):
     tools.execute_on_vm(cmd, echo=True)
     cmd="dmesg"
     tools.execute_on_vm(cmd, echo=True)
+
+def test_aer_inject(error_type):
+    print("Info: testing %s eror"%error_type)
+    prog = tools.system_path("cxl_test_tool_dir")+"/cxl-tool.py"
+    cmd = "%s --run -T sw"%prog
+    tools.exec_shell_direct(cmd)
+    if not tools.vm_is_running():
+        return
+    tools.install_packages_on_vm("pciutils")
+    cmd = "lspci"
+    tools.execute_on_vm(cmd, echo = True)
+
+    aer_tool_path="~/aer-inject"
+    if not tools.path_exist_on_vm(aer_tool_path):
+        install_aer_inject(dire=aer_tool_path);
+    
+    patch = tools.system_path("cxl_test_tool_dir") + "/test-workflows/0001-aer-inject-Add-internal-error-injection.patch"
+    if not os.path.exists(patch):
+        print("%s not found, skip applying"%patch)
+    else:
+        key = "aer-inject: Add internal error injection"
+        rs = tools.execute_on_vm("cd %s; git log --oneline | head -1"%aer_tool_path)
+        print(rs)
+        if key in rs:
+            print("Patch already applied, skip")
+        else:
+            tools.copy_to_remote(patch,"/tmp/aer.patch") 
+            cmd = "git config --global user.email root@vm"
+            rs = tools.execute_on_vm(cmd, echo = True)
+            cmd = "git config --global user.name root@vm"
+            rs = tools.execute_on_vm(cmd, echo = True)
+            cmd = "cd %s; git am --reject %s"%(aer_tool_path, "/tmp/aer.patch")
+            rs = tools.execute_on_vm(cmd, echo = True)
+            print(rs)
+        cmd = "cd %s; make"%aer_tool_path
+        rs = tools.execute_on_vm(cmd, echo = True)
+        print(rs)
+        cmd = "%s/aer-inject"%aer_tool_path
+        if not tools.path_exist_on_vm(cmd):
+            print("%s not found"%cmd)
+            return
+        print("Now ready to inject error for testing...")
+        cmd = "modprobe aer_inject"
+        rs = tools.execute_on_vm(cmd, echo = True)
+        print(rs)
+        cmd = "lsmod"
+        rs = tools.execute_on_vm(cmd, echo = True)
+        print(rs)
+

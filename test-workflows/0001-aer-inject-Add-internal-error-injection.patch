@@ -1,0 +1,89 @@
+From ca9277866b506723f46f3acd7b264ffa80c37276 Mon Sep 17 00:00:00 2001
+From: Terry Bowman <terry.bowman@amd.com>
+Date: Thu, 17 Oct 2024 12:12:58 -0500
+Subject: [PATCH] aer-inject: Add internal error injection
+Status: RO
+Content-Length: 2783
+Lines: 80
+
+Add corrected (CE) and uncorrected (UCE) AER internal error injection
+support.
+
+Signed-off-by: Terry Bowman <terry.bowman@amd.com>
+---
+ aer.h   | 2 ++
+ aer.lex | 2 ++
+ aer.y   | 8 ++++----
+ 3 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/aer.h b/aer.h
+index a0ad152..e55a731 100644
+--- a/aer.h
++++ b/aer.h
+@@ -30,11 +30,13 @@ struct aer_error_inj
+ #define  PCI_ERR_UNC_MALF_TLP	0x00040000	/* Malformed TLP */
+ #define  PCI_ERR_UNC_ECRC	0x00080000	/* ECRC Error Status */
+ #define  PCI_ERR_UNC_UNSUP	0x00100000	/* Unsupported Request */
++#define  PCI_ERR_UNC_INTERNAL   0x00400000      /* Internal error */
+ #define  PCI_ERR_COR_RCVR	0x00000001	/* Receiver Error Status */
+ #define  PCI_ERR_COR_BAD_TLP	0x00000040	/* Bad TLP Status */
+ #define  PCI_ERR_COR_BAD_DLLP	0x00000080	/* Bad DLLP Status */
+ #define  PCI_ERR_COR_REP_ROLL	0x00000100	/* REPLAY_NUM Rollover */
+ #define  PCI_ERR_COR_REP_TIMER	0x00001000	/* Replay Timer Timeout */
++#define  PCI_ERR_COR_CINTERNAL	0x00004000	/* Internal error */
+ 
+ extern void init_aer(struct aer_error_inj *err);
+ extern void submit_aer(struct aer_error_inj *err);
+diff --git a/aer.lex b/aer.lex
+index 6121e4e..4fadd0e 100644
+--- a/aer.lex
++++ b/aer.lex
+@@ -82,11 +82,13 @@ static struct key {
+ 	KEYVAL(MALF_TLP, PCI_ERR_UNC_MALF_TLP),
+ 	KEYVAL(ECRC, PCI_ERR_UNC_ECRC),
+ 	KEYVAL(UNSUP, PCI_ERR_UNC_UNSUP),
++	KEYVAL(INTERNAL, PCI_ERR_UNC_INTERNAL),
+ 	KEYVAL(RCVR, PCI_ERR_COR_RCVR),
+ 	KEYVAL(BAD_TLP, PCI_ERR_COR_BAD_TLP),
+ 	KEYVAL(BAD_DLLP, PCI_ERR_COR_BAD_DLLP),
+ 	KEYVAL(REP_ROLL, PCI_ERR_COR_REP_ROLL),
+ 	KEYVAL(REP_TIMER, PCI_ERR_COR_REP_TIMER),
++	KEYVAL(CINTERNAL, PCI_ERR_COR_CINTERNAL),
+ };
+ 
+ static int cmp_key(const void *av, const void *bv)
+diff --git a/aer.y b/aer.y
+index e5ecc7d..500dc97 100644
+--- a/aer.y
++++ b/aer.y
+@@ -34,8 +34,8 @@ static void init(void);
+ 
+ %token AER DOMAIN BUS DEV FN PCI_ID UNCOR_STATUS COR_STATUS HEADER_LOG
+ %token <num> TRAIN DLP POISON_TLP FCP COMP_TIME COMP_ABORT UNX_COMP RX_OVER
+-%token <num> MALF_TLP ECRC UNSUP
+-%token <num> RCVR BAD_TLP BAD_DLLP REP_ROLL REP_TIMER
++%token <num> MALF_TLP ECRC UNSUP INTERNAL
++%token <num> RCVR BAD_TLP BAD_DLLP REP_ROLL REP_TIMER CINTERNAL
+ %token <num> SYMBOL NUMBER
+ %token <str> PCI_ID_STR
+ 
+@@ -77,14 +77,14 @@ uncor_status_list: /* empty */			{ $$ = 0; }
+ 	;
+ 
+ uncor_status: TRAIN | DLP | POISON_TLP | FCP | COMP_TIME | COMP_ABORT
+-	| UNX_COMP | RX_OVER | MALF_TLP | ECRC | UNSUP | NUMBER
++	| UNX_COMP | RX_OVER | MALF_TLP | ECRC | UNSUP | INTERNAL | NUMBER
+ 	;
+ 
+ cor_status_list: /* empty */			{ $$ = 0; }
+ 	| cor_status_list cor_status		{ $$ = $1 | $2; }
+ 	;
+ 
+-cor_status: RCVR | BAD_TLP | BAD_DLLP | REP_ROLL | REP_TIMER | NUMBER
++cor_status: RCVR | BAD_TLP | BAD_DLLP | REP_ROLL | REP_TIMER | CINTERNAL | NUMBER
+ 	;
+ 
+ %% 
+-- 
+2.34.1
+

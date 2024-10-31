@@ -85,30 +85,39 @@ def compile_ndctl(dir):
         meson compile -C build;\
         meson install -C build" %dir
     print(cmd)
-    return execute_on_vm(cmd)
+    if tools.is_bare_metal():
+        tools.exec_shell_direct(cmd)
+    else:
+        tools.exec_shell_remote_direct(cmd)
 
 def ndctl_installed():
     cmds = "cxl daxctl ndctl"
     for cmd in cmds.split():
-        rs = execute_on_vm("which %s"%cmd)
+        if tools.is_bare_metal():
+            rs = tools.sh_cmd("which %s"%cmd)
+        else:
+            rs = execute_on_vm("which %s"%cmd)
         if not rs:
             return False
     print("ndctl tools are already installed!")
     return True
 
-def install_ndctl(url="https://github.com/pmem/ndctl.git", dir="/tmp/ndctl"):
+def install_ndctl(dir="/tmp/ndctl"):
     cmd= "git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev libsystemd-dev 1>&/dev/null"
+    url = tools.system_env("ndctl_url")
+    if not url:
+        url="https://github.com/pmem/ndctl.git",
+    branch = tools.system_env("ndctl_branch")
+    if not branch:
+        branch = "main"
     if tools.is_bare_metal():
         tools.install_packages(cmd)
+        tools.git_clone(url = url, branch = branch, dst_dir = dir)
     else:
         tools.install_packages_on_vm(cmd)
-    cmd="git clone %s %s"%(url, dir)
-    print(cmd)
-    out=execute_on_vm("git clone %s %s"%(url, dir))
-    print(out)
-    out=compile_ndctl(dir)
-    print(out)
+        tools.git_clone_on_vm(url = url, branch = branch, dst_dir = dir)
 
+    compile_ndctl(dir)
     return ndctl_installed();
 
 def gdb_ndctl(cmd):
@@ -258,7 +267,7 @@ def cxl_pmem_test(memdev):
         return
     if not path_exist_on_vm(ndctl_dir) or not ndctl_installed():
         ndctl_url=os.getenv("ndctl_url")
-        rs = install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        rs = install_ndctl(dir=ndctl_dir)
         if not rs:
             return
 
@@ -293,7 +302,7 @@ def cxl_vmem_test(memdev):
         return
     if not path_exist_on_vm(ndctl_dir):
         ndctl_url=os.getenv("ndctl_url")
-        rs = install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        rs = install_ndctl(dir=ndctl_dir)
         if not rs:
             return
 
@@ -389,6 +398,7 @@ parser.add_argument('--start-vm', help='start vm with specified setup (regular, 
 parser.add_argument('--setup-kernel-arm', help='configure and build kernel for aarch64', action='store_true')
 parser.add_argument('--build-kernel-arm', help='only build kernel for aarch64', action='store_true')
 parser.add_argument('--start-arm', help='start a VM for aarch64', action='store_true')
+parser.add_argument('--test-einj', help='workflow: testing aer inject', required=False, default="")
 
 args = vars(parser.parse_args())
 
@@ -474,8 +484,7 @@ if args["kdb"]:
     gdb_kernel()
 
 if args["install_ndctl"]:
-    ndctl_url=os.getenv("ndctl_url")
-    install_ndctl(url=ndctl_url, dir=ndctl_dir)
+    install_ndctl(dir=ndctl_dir)
 if args["load_drv"]:
     cxl.load_driver()
 if args["unload_drv"]:
@@ -530,3 +539,5 @@ if args["start_arm"]:
     kernel_img=system_path("KERNEL_ROOT")+"/arch/arm64/boot/Image"
     bios=system_path("BIOS")
     arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img, bios=bios)
+if args["test_einj"]:
+    ras.test_aer_inject("internal")
