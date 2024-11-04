@@ -1,6 +1,7 @@
 import utils.tools as tools
 import os
 import re
+import utils.cxl as cxl
 
 ras_service="""
 [Unit]
@@ -157,10 +158,10 @@ def inject_aer(file, aer_tool_path="~/aer-inject"):
     cmd="dmesg"
     tools.execute_on_vm(cmd, echo=True)
 
-def test_aer_inject(error_type):
-    print("Info: testing %s eror"%error_type)
+def test_aer_inject(topo):
+    print("Info: testing aer with  %s topology"%topo)
     prog = tools.system_path("cxl_test_tool_dir")+"/cxl-tool.py"
-    cmd = "%s --run -T sw"%prog
+    cmd = "%s --run -T %s"%(prog, topo)
     tools.exec_shell_direct(cmd)
     if not tools.vm_is_running():
         return

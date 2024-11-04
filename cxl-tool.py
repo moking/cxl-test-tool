@@ -398,7 +398,7 @@ parser.add_argument('--start-vm', help='start vm with specified setup (regular, 
 parser.add_argument('--setup-kernel-arm', help='configure and build kernel for aarch64', action='store_true')
 parser.add_argument('--build-kernel-arm', help='only build kernel for aarch64', action='store_true')
 parser.add_argument('--start-arm', help='start a VM for aarch64', action='store_true')
-parser.add_argument('--test-einj', help='workflow: testing aer inject', required=False, default="")
+parser.add_argument('--test-einj', help='workflow: testing aer inject with [topo] as parameter', required=False, default="")
 
 args = vars(parser.parse_args())
 
@@ -540,4 +540,4 @@ if args["start_arm"]:
     bios=system_path("BIOS")
     arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img, bios=bios)
 if args["test_einj"]:
-    ras.test_aer_inject("internal")
+    ras.test_aer_inject(args['test_einj'])

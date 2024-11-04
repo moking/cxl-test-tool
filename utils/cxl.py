@@ -340,7 +340,7 @@ def create_dc_region(memdev):
         enable_memdev(memdev)
 
     mode=find_mode(memdev)
-    if mode != "dc":
+    if not mode.startswith("dc"):
         print("%s is not DCD device, skip"%memdev)
         return ""
 
