@@ -231,7 +231,7 @@ def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfi
     package_str="libglib2.0-dev libgcrypt20-dev zlib1g-dev \
         autoconf automake libtool bison flex libpixman-1-dev bc\
         make ninja-build libncurses-dev libelf-dev libssl-dev debootstrap \
-        libcap-ng-dev libattr1-dev libslirp-dev libslirp0 python3-venv"
+        libcap-ng-dev libattr1-dev libslirp-dev libslirp0 python3-venv git"
 
     install_packages(package_str)
 

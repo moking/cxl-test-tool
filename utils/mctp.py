@@ -104,7 +104,7 @@ def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main
         cmd="rm -rf %s"%target_dir
         tools.execute_on_vm(cmd, echo=True)
 
-    tools.install_packages_on_vm("meson libdbus-1-dev git")
+    tools.install_packages_on_vm("meson libdbus-1-dev git cmake locales")
     cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
     tools.execute_on_vm(cmd, echo=True)
     cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
