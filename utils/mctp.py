@@ -113,6 +113,7 @@ def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main
     tools.execute_on_vm(cmd, echo=True)
 
 def setup_vm_for_mctp(kernel="~/cxl/linux-v6.6-rc6", qemu_dir="~/cxl/qemu-mctp"):
+    print("Setup VM for MCTP")
     cxl_test_tool_dir=tools.system_path("cxl_test_tool_dir")
     if tools.vm_is_running():
         dcd,mctp = tools.run_with_dcd_mctp()
@@ -129,6 +130,12 @@ def setup_vm_for_mctp(kernel="~/cxl/linux-v6.6-rc6", qemu_dir="~/cxl/qemu-mctp")
     if not dire or not qemu_dir:
         print("Kernel or qemu directory for mctp setup not found")
         return
+    cmd = "cd %s; git rev-parse --abbrev-ref HEAD"%qemu_dir
+    branch = tools.sh_cmd(cmd)
+    if branch != "cxl-2024-08-20":
+        rs = input("Qemu branch %s seems not right for MCTP setup, continue (Y/N):"%branch)
+        if not rs or rs.lower() != "y":
+            return
 
     topo="FM_DCD"
     topo=cxl.find_topology(topo)

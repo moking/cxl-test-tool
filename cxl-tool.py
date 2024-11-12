@@ -406,7 +406,7 @@ if args["verbose"]:
     print(args)
 
 user=sh_cmd("whoami")
-tmp_config="/tmp/.vars.config"
+tmp_config="/tmp/.vars.config-%s"%user
 config=".vars.config"
 env_dict = {}
 if os.path.exists(config):
