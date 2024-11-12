@@ -30,3 +30,6 @@ cxl_host_dir="/tmp/host/"
 
 qmp_port=4445
 monitor_port=12346
+
+libcxlmi_branch="main"
+libcxlmi_url="https://github.com/computexpresslink/libcxlmi.git"

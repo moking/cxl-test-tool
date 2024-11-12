@@ -518,9 +518,13 @@ if args["test_fm"]:
     mctp.run_fm_test()
 if args["test_libcxlmi"]:
     libcxlmi_branch=tools.system_env("libcxlmi_branch")
+    libcxlmi_url=tools.system_env("libcxlmi_url")
     if not libcxlmi_branch:
         libcxlmi_branch = "main"
-    mctp.run_libcxlmi_test(branch=libcxlmi_branch)
+    if not libcxlmi_url:
+        mctp.run_libcxlmi_test(branch=libcxlmi_branch)
+    else:
+        mctp.run_libcxlmi_test(url=libcxlmi_url, branch=libcxlmi_branch)
 if args["start_vm"]:
     if args["start_vm"] == "mctp":
         mctp.setup_vm_for_mctp()

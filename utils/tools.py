@@ -27,8 +27,6 @@ def system_env(name):
             return "2024"
         if name == "vm_usr":
             return "root"
-        elif "branch" in name:
-            return "master"
         elif name == "cxl_test_log_dir":
             return "/tmp/cxl-logs"
         else:
