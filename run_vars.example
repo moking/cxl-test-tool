@@ -27,3 +27,6 @@ accel_mode="tcg"
 cxl_test_tool_dir="~/cxl/cxl-test-tool/"
 cxl_test_log_dir="/tmp/cxl-logs/"
 cxl_host_dir="/tmp/host/"
+
+qmp_port=4445
+monitor_port=12346

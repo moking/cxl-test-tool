@@ -407,7 +407,6 @@ wait_flag="nowait"
 format="raw"
 num_cpus="8"
 accel_mode="kvm"
-SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
 
 def run_with_dcd_mctp():
     name="qemu-system"
@@ -457,13 +456,23 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
         cmd = "sudo chmod 666 /dev/kvm"
         sh_cmd(cmd,echo=True)
 
-    cmd=" -s "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
+    qmp_port = system_env("qmp_port")
+    if not qmp_port:
+        qmp_port = 4445
+    SHARED_CFG="-qmp tcp:localhost:%s,server,wait=off"%qmp_port
+
+    monitor_port = system_env("monitor_port")
+    if not monitor_port:
+        monitor_port= 12346
+
+    # Add -s here if needed
+    cmd=" "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
             " -serial mon:stdio "+ \
             " -nographic " + \
             " "+SHARED_CFG+" "+ net_config + " "+\
-            " -monitor telnet:127.0.0.1:12345,server,"+wait_flag+\
+            " -monitor telnet:127.0.0.1:%s,server,"%monitor_port+wait_flag+\
             " -drive file="+system_path("QEMU_IMG")+",index=0,media=disk,format="+format+\
             " -machine q35,cxl=on -cpu qemu64,mce=on -m 8G,maxmem=32G,slots=8 "+ \
             " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
@@ -476,6 +485,8 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
         write_to_file(status_file, "QEMU:running")
         write_to_file("%s/topo"%log_dir, topo);
         usr = system_path("vm_usr")
+        if not usr:
+            usr = "root"
         print("QEMU instance is up, access it: ssh %s@localhost -p %s"%(usr, ssh_port))
     else:
         write_to_file(status_file, "")
