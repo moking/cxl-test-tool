@@ -1,4 +1,3 @@
-import paramiko
 import time
 import subprocess
 import utils.tools as tool
