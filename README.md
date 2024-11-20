@@ -19,6 +19,19 @@ Make sure you have git, ssh, python3, python-is-python3, gdb, gcc installed.
 Also, before creating the qemu image, generate ssh key first with ssh-keygen.
 The created image uses the public key to enable passwordless access.
 
+#Instruction for first time users (Debian based release)
+1. download cxl-test-tool from github;
+2. Install packages needed (python3, python-is-python3, ssh);
+3. Generate ssh key if not already (for keyless access to the VM);
+4. cp run_vars.example .vars.config;
+5. Configure .vars.config as needed;
+6. setup QEMU: ./cxl-tool.py --setup-qemu (If ninja not found, check the right location is pointed for ninja)
+7. Create Qemu image for VM: ./cxl-tool.py --create-image
+8. setup Kernel: ./cxl-tool.py --setup-kernel
+9. Start a VM with basic CXL topology: ./cxl-tool.py --run
+10. login to the VM by: ./cxl-tool.py --login
+11. Enjoy and explore more with the tool ...
+
 # run configuration file
 All the run configuration options are defined in .vars.config. This options will control where the directory of qemu, kernel, and which qemu image we want to use.
 Also, all the URLs related to git clone operation is defined there.
