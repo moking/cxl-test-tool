@@ -107,8 +107,7 @@ def package_installed_on_vm(package):
         return False
 
 
-def install_packages_on_vm(package_str, user="root", host="localhost"):
-    ssh_port=system_env("ssh_port")
+def install_packages_on_vm(package_str, echo = False):
     packages=[]
     for i in package_str.split():
         if not package_installed_on_vm(i):
@@ -117,7 +116,7 @@ def install_packages_on_vm(package_str, user="root", host="localhost"):
         print("All packages are already installed on VM, skip installing!")
         return;
     cmd="apt-get install -y %s"%" ".join(packages)
-    rs=execute_on_vm(cmd)
+    rs=execute_on_vm(cmd, echo = echo)
     print(rs)
 
 def system_path(name):
