@@ -4,8 +4,10 @@
 * If you like the tool, please star it to attract more people's interests.
 
 # Recent important changes.
-**Now you can test bare metal with simple configuration, see commit 87697211e3a96aaec946baa57e9b18f6d31401f8 **
-****Done: recently I started to move the code to python so it is easier to support more complicated use workflow. cxl-tool.py is the new main file.**
+
+** Now you can test bare metal with simple configuration, see commit 87697211e3a96aaec946baa57e9b18f6d31401f8 **
+
+** Done: recently I started to move the code to python so it is easier to support more complicated use workflow. cxl-tool.py is the new main file.**
 <pre>
 1. Updated DCD test workflow;
 2. Add mctp setup;
@@ -13,13 +15,14 @@
 4. ...
 </pre>
 
-NOTE: the tool needs python3 and some other packages.
-Before starting to use it.
-Make sure you have git, ssh, python3, python-is-python3, gdb, gcc installed.
-Also, before creating the qemu image, generate ssh key first with ssh-keygen.
-The created image uses the public key to enable passwordless access.
+NOTE:
 
-#Instruction for first time users (Debian based release)
+* the tool needs python3 and some other packages.  Before starting to use it.
+* Make sure you have git, ssh, python3, python-is-python3, gdb, gcc installed.
+* Also, before creating the qemu image, generate ssh key first with ssh-keygen on the host if not already exist.
+* The created image uses the public key to enable passwordless access.
+
+# Instruction for first time users (Debian based release)
 1. download cxl-test-tool from github;
 2. Install packages needed (python3, python-is-python3, ssh);
 3. Generate ssh key if not already (for keyless access to the VM);
