@@ -201,6 +201,13 @@ def create_qemu_image(img_path):
     cmd="sudo mount -o loop %s %s"%(img_path, tmp_dir)
     tools.exec_shell_direct(cmd, echo=True)
 
+    tools.install_packages("debootstrap")
+    cmd = "whereis debootstrap"
+    rs = sh_cmd(cmd)
+    rs.replace("debootstrap:", "")
+    if not rs:
+        print("tool: debootstrap not found, exit")
+        return
     print("Starting to debootstrap for the VM")
     cmd="sudo debootstrap --arch amd64 stable %s"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)

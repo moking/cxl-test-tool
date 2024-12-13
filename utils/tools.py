@@ -65,15 +65,38 @@ def copy_to_remote(src, dst="/tmp/", user="root", host="localhost"):
 def package_installed(package):
     if not package:
         return False
-    cmd="apt-cache policy %s | grep -w Installed"%package
-    rs=sh_cmd(cmd)
-    if rs:
-        version=rs.split(":")[1].strip()
-        if "none" in version:
+    if debian_release():
+        cmd="apt-cache policy %s | grep -w Installed"%package
+        rs=sh_cmd(cmd)
+        if rs:
+            version=rs.split(":")[1].strip()
+            if "none" in version:
+                return False
+            return True
+        else:
+            return False
+    elif archlinux_release():
+        cmd = "pacman -Q %s"%package
+        rs=sh_cmd(cmd, echo=True)
+        if rs.startswith("error:"):
             return False
         return True
-    else:
-        return False
+
+def debian_release():
+    cmd = "cat /etc/os-release| grep -w NAME"
+    rs = sh_cmd(cmd)
+
+    if "ubuntu" in rs.lower() or "mint" in rs.lower() or "debian" in rs.lower():
+        return True
+    return False
+
+def archlinux_release():
+    cmd = "cat /etc/os-release| grep -w NAME"
+    rs = sh_cmd(cmd)
+
+    if "arch" in rs.lower():
+        return True
+    return False
 
 def install_packages(package_str):
     packages=[]
@@ -81,12 +104,15 @@ def install_packages(package_str):
         if not package_installed(i):
             packages.append(i)
     if not packages:
+        print("Packages: %s"%package_str)
         print("All packages are already installed, skip installing!")
         return;
-    cmd="sudo apt-get install -y %s"%" ".join(packages)
-    print(cmd)
-    #rs=sh_cmd(cmd)
-    exec_shell_direct(cmd)
+
+    if debian_release():
+        cmd="sudo apt-get install -y %s"%" ".join(packages)
+        exec_shell_direct(cmd)
+    elif archlinux_release():
+        install_packages_archlinux(package_str)
     for i in packages:
         if not package_installed(i):
             print("%s not installed"%i)
@@ -253,9 +279,9 @@ def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfi
         print(rs)
     if reconfig:
         if debug:
-            cmd="cd %s;./configure --target-list=%s --enable-debug"%(qemu_dir, arch)
+            cmd="cd %s;./configure --target-list=%s --enable-debug --enable-slirp"%(qemu_dir, arch)
         else:
-            cmd="cd %s;./configure --target-list=%s --disable-debug-info"%(qemu_dir, arch)
+            cmd="cd %s;./configure --target-list=%s --disable-debug-info --enable-slirp"%(qemu_dir, arch)
         sh_cmd(cmd, echo=True)
     cmd="cd %s; make -j 16"%qemu_dir
     sh_cmd(cmd, echo=True)
@@ -330,7 +356,18 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
     else:
         print("Run --build-kernel to configure and compile kernel")
 
+def install_packages_archlinux(packages):
+    if not archlinux_release():
+        print("Check your OS release to call pacman")
+        return
+    cmd = "sudo pacman -S %s --noconfirm"%packages
+    exec_shell_direct(cmd)
+
 def build_qemu(qemu_dir):
+    if debian_release():
+        install_packages("ninja")
+    elif archlinux_release():
+        install_packages_archlinux("ninja")
     qemu_dir=os.path.expanduser(qemu_dir)
     if not os.path.exists(qemu_dir):
         print("No qemu source code found, may need run --setup-qemu")
@@ -344,6 +381,7 @@ def is_bare_metal():
     ssh_port = system_env("ssh_port")
     return ssh_port == "22"
 def build_kernel(kernel_dir):
+    install_packages("bc")
     kernel_dir=os.path.expanduser(kernel_dir)
     if not os.path.exists(kernel_dir):
         print("No kernel source code found, may need run --setup-kernel")
@@ -450,8 +488,9 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
     home=os.getenv("HOME")
 
     if accel_mode == "kvm":
-        cmd = "sudo chmod 666 /dev/kvm"
-        sh_cmd(cmd,echo=True)
+        if not os.access("/dev/kvm", os.R_OK) or not os.access("/dev/kvm", os.W_OK):
+            cmd = "sudo chmod 666 /dev/kvm"
+            sh_cmd(cmd,echo=True)
 
     qmp_port = system_env("qmp_port")
     if not qmp_port:
