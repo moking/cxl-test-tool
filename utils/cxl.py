@@ -124,7 +124,7 @@ def unload_driver(host="localhost"):
     if user == "root":
         tools.execute_on_vm("modprobe -r cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
         tools.execute_on_vm("modprobe -r nd_pmem")
-        tools.execute_on_vm("modprobe -r device_dax dax nd_btt libnvdimm dax_pmem")
+        tools.execute_on_vm("modprobe -r dax_pmem device_dax dax nd_btt libnvdimm dax_pmem")
     else:
         tools.execute_on_vm("sudo modprobe -r cxl_pmem cxl_mem cxl_port cxl_pci cxl_acpi cxl_pmu cxl_core")
         tools.execute_on_vm("sudo modprobe -r nd_pmem")
