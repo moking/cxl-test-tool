@@ -18,6 +18,18 @@ def exec_shell_direct(cmd, echo=False):
         print(cmd)
     subprocess.run(cmd, shell=True)
 
+def thread_cnt():
+    s = "nproc"
+    cmd = "which %s"%s
+    rs = sh_cmd(cmd)
+    if not rs:
+        return "16"
+    return sh_cmd(s)
+
+def make_cmd():
+    n = thread_cnt()
+    return "make -j%s"%n
+
 def system_env(name):
     if not name:
         return ""
@@ -283,7 +295,7 @@ def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfi
         else:
             cmd="cd %s;./configure --target-list=%s --disable-debug-info --enable-slirp"%(qemu_dir, arch)
         sh_cmd(cmd, echo=True)
-    cmd="cd %s; make -j 16"%qemu_dir
+    cmd="cd %s; %s"%(qemu_dir, make_cmd())
     sh_cmd(cmd, echo=True)
     cmd="cd %s; ls build/qemu-system-*"%qemu_dir
     sh_cmd(cmd, echo=True)
@@ -351,7 +363,7 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
         sh_cmd(cmd, echo=True)
 
     if recompile:
-        exec_shell_direct("cd %s; make -j 16"%kernel_dir, echo=True)
+        exec_shell_direct("cd %s; %s"%(kernel_dir, make_cmd()), echo=True)
         exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
     else:
         print("Run --build-kernel to configure and compile kernel")
@@ -372,7 +384,7 @@ def build_qemu(qemu_dir):
     if not os.path.exists(qemu_dir):
         print("No qemu source code found, may need run --setup-qemu")
         return
-    cmd="cd %s; make -j 16"%qemu_dir
+    cmd="cd %s; %s"%(qemu_dir,make_cmd())
     sh_cmd(cmd, echo=True)
     cmd="cd %s; ls build/qemu-system-*"%qemu_dir
     sh_cmd(cmd, echo=True)
@@ -390,7 +402,7 @@ def build_kernel(kernel_dir):
     if ans.lower() == "y":
         cmd = "cd %s; make menuconfig"%kernel_dir
         exec_shell_direct(cmd, echo=True)
-    cmd="cd %s; make -j 16"%kernel_dir
+    cmd="cd %s; %s"%(kernel_dir, make_cmd())
     exec_shell_direct(cmd, echo=True)
     exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
     if is_bare_metal():
