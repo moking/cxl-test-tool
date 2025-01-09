@@ -24,13 +24,13 @@ NOTE:
 * Also, before creating the qemu image, generate ssh key first with ssh-keygen on the host if not already exist.
 * The created image uses the public key to enable passwordless access.
 
-# Instruction for first time users (Debian based release)
+# Instruction for first time users (Debian based release + archlinux (need more test))
 1. download cxl-test-tool from github;
 2. Install packages needed (python3, python-is-python3, ssh);
-3. Generate ssh key if not already (for keyless access to the VM);
+3. Generate ssh key if not already (for keyless access to the VM) on the host;
 4. cp run_vars.example .vars.config;
 5. Configure .vars.config as needed;
-6. setup QEMU: ./cxl-tool.py --setup-qemu (If ninja not found, check the right location is pointed for ninja)
+6. setup QEMU: ./cxl-tool.py --setup-qemu (If ninja not found, check if the right location is pointed for ninja)
 7. Create Qemu image for VM: ./cxl-tool.py --create-image
 8. setup Kernel: ./cxl-tool.py --setup-kernel
 9. Start a VM with basic CXL topology: ./cxl-tool.py --run
