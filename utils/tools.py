@@ -475,7 +475,7 @@ def run_with_dcd_mctp():
             continue;
     return has_dcd,has_mctp
 
-def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
+def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
     if vm_is_running():
         print("VM is running, exit")
         return;
@@ -526,8 +526,12 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode):
             " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
             " -virtfs local,path=%s"%home+",mount_tag=homeshare,security_model=mapped "+ topo
 
-    write_to_file("%s/run-cmd"%log_dir, cmd)
-    bg_cmd(bin+cmd)
+    write_to_file("%s/run-cmd"%log_dir, bin+cmd)
+    write_to_file("%s/gdb-run-cmd"%log_dir, "gdb --args "+bin+cmd)
+    if not run_direct:
+        bg_cmd(bin+cmd)
+    else:
+        exec_shell_direct(bin+cmd)
     status_file="%s/qemu-status"%log_dir
     if vm_is_running():
         write_to_file(status_file, "QEMU:running")

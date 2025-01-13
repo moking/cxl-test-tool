@@ -365,7 +365,8 @@ def dcd_test(memdev):
 
 parser = argparse.ArgumentParser(description='A tool for cxl test with Qemu setup')
 parser.add_argument('-v','--verbose', help='show more message', action='store_true')
-parser.add_argument('-R','--run', help='start qemu instance', action='store_true')
+parser.add_argument('-R','--run', help='start qemu instance in background', action='store_true')
+parser.add_argument('--run-direct', help='start qemu instance', action='store_true')
 parser.add_argument('-T','--topo', help='cxl topology to use', required=False, default="")
 parser.add_argument('-A','--accel', help='accel mode: kvm/tcg', required=False, default="kvm")
 parser.add_argument('-E','--extra', help='extra options when run qemu', required=False, default="")
@@ -468,10 +469,13 @@ if args["topo"]:
 if args["create_topo"]:
     topo=gen_cxl_topology()
 
-if args["run"]:
+if args["run"] or args["run_direct"]:
     if not topo:
         topo=cxl.find_topology("RP1")
-    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH, accel_mode=args["accel"])
+    direct = False
+    if args["run_direct"]:
+        direct = True
+    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH, accel_mode=args["accel"], run_direct = direct)
 
 if args["login"]:
     login_vm()
