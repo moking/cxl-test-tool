@@ -39,7 +39,7 @@ def create_cxl_pmem(parent_dport, size="512M"):
     global mem_id
     global serial
     hmem, hmem_str=create_object("hmem%s"%mem_id, size=size)
-    lsa, lsa_str=create_object("lsa%s"%mem_id)
+    lsa, lsa_str=create_object("lsa%s"%mem_id, size = "2M")
     name = "cxl-memdev%s"%mem_id
     mem_str= "-device cxl-type3,bus=%s,memdev=%s,lsa=%s,id=cxl-memdev%s,sn=%s "%(parent_dport, hmem, lsa, mem_id, serial)
     mem_id += 1
@@ -62,7 +62,7 @@ def create_cxl_mem(parent_dport, pmem=True, vmem=False, dcd=False):
     global mem_id
     global serial
     prefix= "-device cxl-type3,bus=%s,"%parent_dport
-    lsa, lsa_str=create_object("lsa%s"%mem_id)
+    lsa, lsa_str=create_object("lsa%s"%mem_id, size = "2M")
     name = "cxl-memdev%s"%mem_id
     suffix="id=%s,sn=%s "%(name,serial)
     hmem_str=""
