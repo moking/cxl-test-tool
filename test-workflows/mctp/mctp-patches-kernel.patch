@@ -340,7 +340,7 @@ From: Jonathan Cameron <Jonathan.Cameron@huawei.com>
 Date: Mon, 16 Oct 2023 13:53:20 +0100
 Subject: [PATCH 08/12] cxl: mbox: Preparatory move of functions to core/mbox.c
  and cxlmbox.h
-Status: O
+Status: RO
 Content-Length: 34592
 Lines: 965
 

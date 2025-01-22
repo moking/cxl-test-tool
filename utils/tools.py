@@ -487,6 +487,13 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
         topo = topo.replace("/tmp",host_dir)
         if not os.path.exists(host_dir):
             sh_cmd("mkdir -p %s"%host_dir)
+        else:
+            if len(os.listdir(host_dir)) != 0:
+                choice = input("back memory/lsa file exist from previous run, delete them Y/N(default Y): ")
+                if choice and choice.lower() == "n":
+                    print("Warning: run with existing run files, may cause unexpected behavior!!!")
+                else:
+                    exec_shell_direct("rm -rf %s/*"%host_dir)
 
     ssh_port=system_env("ssh_port")
     net_config = system_env("net_config")
@@ -514,7 +521,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
         monitor_port= 12346
 
     # Add -s here if needed
-    cmd=" "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
+    cmd=" -s "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
             " -serial mon:stdio "+ \
