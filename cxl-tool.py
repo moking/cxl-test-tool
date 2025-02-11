@@ -164,7 +164,7 @@ def gdb_kernel():
         signal.signal(signal.SIGINT, original_sigint_handler)
 
 
-def create_qemu_image(img_path):
+def create_qemu_image(img_path, size="16g", ubuntu=False):
     if not img_path:
         print("No qemu image path given")
         return
@@ -191,7 +191,7 @@ def create_qemu_image(img_path):
         print("qemu-img tool not found")
         return
 
-    cmd="%s create %s 16g"%(qemu_tool, img_path)
+    cmd="%s create %s %s"%(qemu_tool, img_path, size)
     tools.exec_shell_direct(cmd)
     cmd="sudo mkfs.ext4 %s"%img_path
     tools.exec_shell_direct(cmd, echo=True)
@@ -209,7 +209,11 @@ def create_qemu_image(img_path):
         print("tool: debootstrap not found, exit")
         return
     print("Starting to debootstrap for the VM")
-    cmd="sudo debootstrap --arch amd64 stable %s"%tmp_dir
+    if ubuntu:
+        url="http://us.archive.ubuntu.com/ubuntu/ubuntu/"
+        cmd="sudo debootstrap --arch amd64 bionic %s %s"%(tmp_dir,url)
+    else:
+        cmd="sudo debootstrap --arch amd64 stable %s"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
     cmd="Copy ssh key to guest to skip password login later"
     print(cmd)
@@ -256,6 +260,8 @@ mount -t 9p -o trans=virtio modshare /lib/modules
     cmd="sudo chroot %s passwd -d root"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
     cmd="sudo chroot %s apt-get update"%tmp_dir
+    tools.exec_shell_direct(cmd, echo=True)
+    cmd="sudo chroot %s apt-get install -y ssh git"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
     cmd="sudo chroot %s apt-get install -y ssh git netplan.io cmake meson locales"%tmp_dir
     tools.exec_shell_direct(cmd, echo=True)
