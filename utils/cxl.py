@@ -53,7 +53,7 @@ FM_DCD="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=2
 
 FM_DCD="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=256M \
  -object memory-backend-file,id=cxl-lsa1,mem-path=/tmp/t3_lsa1.raw,size=1M \
- -object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,size=512M \
+ -object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,size=4G \
  -object memory-backend-file,id=cxl-lsa2,mem-path=/tmp/t3_lsa2.raw,size=1M \
  -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1,hdm_for_passthrough=true \
  -device cxl-rp,port=0,bus=cxl.1,id=cxl_rp_port0,chassis=0,slot=2 \
@@ -195,6 +195,18 @@ def find_mode(memdev):
             return key.split("_")[0]
     return "dc0"
 
+def memdev_size(memdev):
+    file="/tmp/tmp.json"
+    rs=tools.execute_on_vm("cxl list -i -m %s"%memdev)
+    data=tools.output_to_json_data(rs)
+    if not data:
+        return 0
+    for key in data[0].keys():
+        if "_size" in key:
+            return int(data[0][key])
+    print("Warning: No size field found, check whether it is DCD")
+    return 0
+
 def find_key_in_json_data(data, key):
     res=[]
     if not data or not key:
@@ -246,7 +258,12 @@ def create_region(memdev):
         enable_memdev(memdev)
 
     mode=find_mode(memdev)
-    cmd="cxl create-region -m -d decoder0.0 -w 1 %s -s 512M -t %s"%(memdev, mode)
+    size=memdev_size(memdev)
+    if size == 0:
+        print("no device size found, exit")
+        return
+    sz_str = "%sM"%(size//1024//1024)
+    cmd="cxl create-region -m -d decoder0.0 -w 1 %s -s %s -t %s"%(memdev, sz_str, mode)
     print("# "+cmd)
     output=tools.execute_on_vm(cmd)
     print(output)
