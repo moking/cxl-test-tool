@@ -445,7 +445,7 @@ def shutdown_vm():
         execute_on_vm("poweroff")
         time.sleep(2)
         if not vm_is_running():
-            print("VM is powerered off")
+            print("VM is powered off")
     else:
         print("No VM is alive, skip shutdown")
 
