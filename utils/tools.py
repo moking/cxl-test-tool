@@ -222,7 +222,7 @@ def parse_json(file):
             return data
 
 def output_to_json_data(output):
-    file="/tmp/tmp.json"
+    file=system_path("cxl_test_log_dir")+"/tmp.json"
     write_to_file(file, output)
     data=parse_json(file)
     return data

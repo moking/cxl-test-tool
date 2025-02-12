@@ -185,7 +185,7 @@ def find_cmdline_device_id(memdev):
             continue;
 
 def find_mode(memdev):
-    file="/tmp/tmp.json"
+    file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
     rs=tools.execute_on_vm("cxl list -i -m %s"%memdev)
     data=tools.output_to_json_data(rs)
     if not data:
@@ -196,7 +196,7 @@ def find_mode(memdev):
     return "dc0"
 
 def memdev_size(memdev):
-    file="/tmp/tmp.json"
+    file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
     rs=tools.execute_on_vm("cxl list -i -m %s"%memdev)
     data=tools.output_to_json_data(rs)
     if not data:
@@ -243,7 +243,7 @@ def region_exists_for_device(memdev):
 
 
 def create_region(memdev):
-    file="/tmp/tmp.json"
+    file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
 
     if not cxl_driver_loaded():
         print("Load cxl drivers")
@@ -294,7 +294,7 @@ def create_namespace(region):
     output=tools.execute_on_vm(cmd)
     print(output)
 
-    file="/tmp/tmp.json"
+    file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
     tools.write_to_file(file, output)
     ns=""
     dax=""
