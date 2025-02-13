@@ -429,6 +429,10 @@ if os.path.exists(config):
         shutil.copy(config, tmp_config)
 elif os.path.exists(tmp_config):
     env_dict = parse_config(tmp_config)
+    config = system_path("cxl_test_tool_dir")+"/.vars.config"
+    if args["verbose"]:
+        print("Note: We always use config in %s if current directoy does not have one"%config)
+    env_dict = parse_config(config)
 else:
     print("No .vars.config file found! Use run_vars.example as an example to create one")
     exit(1)
