@@ -294,9 +294,9 @@ def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfi
             cmd="cd %s;./configure --target-list=%s --enable-debug --enable-slirp"%(qemu_dir, arch)
         else:
             cmd="cd %s;./configure --target-list=%s --disable-debug-info --enable-slirp"%(qemu_dir, arch)
-        sh_cmd(cmd, echo=True)
+        exec_shell_direct(cmd, echo=True)
     cmd="cd %s; %s"%(qemu_dir, make_cmd())
-    sh_cmd(cmd, echo=True)
+    exec_shell_direct(cmd, echo=True)
     cmd="cd %s; ls build/qemu-system-*"%qemu_dir
     sh_cmd(cmd, echo=True)
 
