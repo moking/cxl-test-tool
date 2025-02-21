@@ -408,6 +408,7 @@ parser.add_argument('--install-ras-tools', help='install ras related tool', acti
 parser.add_argument('--inject-aer', help='inject aer', required=False, default="")
 parser.add_argument('--test-fm', help='run FMAPI test workflow', action='store_true')
 parser.add_argument('--test-libcxlmi', help='run libcxlmi test workflow', action='store_true')
+parser.add_argument('--install-libcxlmi', help='install libcxlmi on VM', action='store_true')
 parser.add_argument('--start-vm', help='start vm with specified setup (regular, mctp)', required=False, default="")
 parser.add_argument('--setup-kernel-arm', help='configure and build kernel for aarch64', action='store_true')
 parser.add_argument('--build-kernel-arm', help='only build kernel for aarch64', action='store_true')
@@ -546,6 +547,17 @@ if args["test_libcxlmi"]:
         mctp.run_libcxlmi_test(branch=libcxlmi_branch)
     else:
         mctp.run_libcxlmi_test(url=libcxlmi_url, branch=libcxlmi_branch)
+
+if args["install_libcxlmi"]:
+    libcxlmi_branch=tools.system_env("libcxlmi_branch")
+    libcxlmi_url=tools.system_env("libcxlmi_url")
+    if not libcxlmi_branch:
+        libcxlmi_branch = "main"
+    if not libcxlmi_url:
+        mctp.install_libcxlmi(branch=libcxlmi_branch)
+    else:
+        mctp.install_libcxlmi(url=libcxlmi_url, branch=libcxlmi_branch)
+
 if args["start_vm"]:
     if args["start_vm"] == "mctp":
         mctp.setup_vm_for_mctp()

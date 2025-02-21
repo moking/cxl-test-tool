@@ -88,6 +88,25 @@ def run_fm_test():
         prepare_fm_test()
     try_fmapi_test()
 
+def install_libcxlmi(url="https://github.com/moking/libcxlmi.git", branch="main", target_dir="/tmp/libcxlmi"):
+    need_start=True
+    if tools.path_exist_on_vm(target_dir):
+        cmd="rm -rf %s"%target_dir
+        tools.execute_on_vm(cmd, echo=True)
+
+    tools.install_packages_on_vm("meson libdbus-1-dev git cmake locales")
+    cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
+    tools.execute_on_vm(cmd, echo=True)
+    cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
+    tools.execute_on_vm(cmd, echo=True)
+    prog = target_dir+"/build/examples/cxl-mctp"
+    if tools.path_exist_on_vm(prog):
+        print("INFO: Install libcxlmi succeeded, run %s on VM to test"%prog)
+        return 0
+
+    print("ERROR: Install libcxlmi failed!")
+    return -1;
+
 def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main", target_dir="/tmp/libcxlmi"):
     need_start=True
     if tools.vm_is_running():
@@ -100,15 +119,9 @@ def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main
     if need_start:
         prepare_fm_test(topo="FM_DCD")
 
-    if tools.path_exist_on_vm(target_dir):
-        cmd="rm -rf %s"%target_dir
-        tools.execute_on_vm(cmd, echo=True)
+    if install_libcxlmi(url, branch, target_dir):
+       return
 
-    tools.install_packages_on_vm("meson libdbus-1-dev git cmake locales")
-    cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
-    tools.execute_on_vm(cmd, echo=True)
-    cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
-    tools.execute_on_vm(cmd, echo=True)
     cmd = "cd %s; ./build/examples/cxl-mctp"%target_dir
     tools.execute_on_vm(cmd, echo=True)
 
