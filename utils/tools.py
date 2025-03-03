@@ -301,7 +301,7 @@ def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfi
     sh_cmd(cmd, echo=True)
 
 
-def setup_kernel(url, branch, kernel_dir, kconfig=""):
+def setup_kernel(url, branch, kernel_dir, kconfig="", mod_path="/opt/"):
     git_clone=True
     recompile=True
     kernel_dir=os.path.expanduser(kernel_dir)
@@ -364,7 +364,7 @@ def setup_kernel(url, branch, kernel_dir, kconfig=""):
 
     if recompile:
         exec_shell_direct("cd %s; %s"%(kernel_dir, make_cmd()), echo=True)
-        exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+        exec_shell_direct("cd %s; sudo make modules_install INSTALL_MOD_PATH=%s"%(kernel_dir, mod_path))
     else:
         print("Run --build-kernel to configure and compile kernel")
 
@@ -392,7 +392,7 @@ def build_qemu(qemu_dir):
 def is_bare_metal():
     ssh_port = system_env("ssh_port")
     return ssh_port == "22"
-def build_kernel(kernel_dir):
+def build_kernel(kernel_dir, mod_path="/opt/"):
     install_packages("bc")
     kernel_dir=os.path.expanduser(kernel_dir)
     if not os.path.exists(kernel_dir):
@@ -404,7 +404,8 @@ def build_kernel(kernel_dir):
         exec_shell_direct(cmd, echo=True)
     cmd="cd %s; %s"%(kernel_dir, make_cmd())
     exec_shell_direct(cmd, echo=True)
-    exec_shell_direct("cd %s; sudo make modules_install"%kernel_dir, echo=True)
+    exec_shell_direct("cd %s; sudo make modules_install INSTALL_MOD_PATH=%s"%(kernel_dir, mod_path))
+
     if is_bare_metal():
         rs = input("Install new kernel to the host (Y/N): ")
         if rs.lower() == "y":
@@ -530,7 +531,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
             " -monitor telnet:127.0.0.1:%s,server,"%monitor_port+wait_flag+\
             " -drive file="+system_path("QEMU_IMG")+",index=0,media=disk,format="+format+\
             " -machine q35,cxl=on -cpu qemu64,mce=on -m 8G,maxmem=64G,slots=8 "+ \
-            " -virtfs local,path=/lib/modules,mount_tag=modshare,security_model=mapped "+\
+            " -virtfs local,path=/opt/lib/modules,mount_tag=modshare,security_model=mapped "+\
             " -virtfs local,path=%s"%home+",mount_tag=homeshare,security_model=mapped "+ topo
 
     write_to_file("%s/run-cmd"%log_dir, bin+cmd)
