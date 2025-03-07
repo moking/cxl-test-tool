@@ -139,7 +139,7 @@ def parse_topo(root, p="", s=""):
             if root.text =="pmem":
                 name, rs = create_cxl_pmem(name, size)
                 s += rs
-            if root.text =="vmem":
+            if root.text == "vmem" or root.text == "ram":
                 name, rs = create_cxl_vmem(name, size)
                 s += rs
             if root.text == "mixed":
@@ -164,7 +164,7 @@ def parse_topo(root, p="", s=""):
             if root.text == "pmem":
                 name, rs = create_cxl_pmem(name, size)
                 s += rs
-            if root.text == "vmem":
+            if root.text == "vmem" or root.text == "ram":
                 name, rs = create_cxl_vmem(name, size)
                 s += rs
             if root.text == "mixed":

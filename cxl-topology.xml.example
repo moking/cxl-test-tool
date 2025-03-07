@@ -4,7 +4,7 @@
         <rp>vmem</rp>
         <rp>
             <switch>
-                <!--pmem/vmem/mixed/mixed-dcd/dcd-->
+                <!--pmem/vmem/ram/mixed/mixed-dcd/dcd-->
                 <dsp id="0">pmem</dsp>
                 <dsp id="1">pmem</dsp>
                 <dsp id="2">vmem</dsp>
