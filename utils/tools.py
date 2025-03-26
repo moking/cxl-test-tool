@@ -522,7 +522,10 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
         monitor_port= 12346
 
     # Add -s here if needed
-    cmd=" -s "+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
+    gdb_port=system_env("gdb_port")
+    if not gdb_port:
+        gdb_port = "1234"
+    cmd=" -gdb tcp::%s "%gdb_port+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
             " -serial mon:stdio "+ \
