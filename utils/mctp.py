@@ -73,7 +73,7 @@ def prepare_fm_test(topo="FM"):
     branch="cxl-2024-08-20"
     tools.setup_qemu(url=url, branch=branch, qemu_dir=qemu_dir, reconfig=True)
 
-    QEMU=qemu_dir+"/build/qemu-system-x86_64"                                   
+    QEMU=qemu_dir+"/build/qemu-system-x86_64"
     #qpatch=test_dir+"/test-workflows/mctp/mctp-patches-qemu.patch"
     #cmd="cd %s; git am --reject %s"%(qemu_dir, qpatch)
     #tools.sh_cmd(cmd, echo=True)

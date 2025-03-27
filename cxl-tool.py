@@ -378,8 +378,11 @@ parser.add_argument('-A','--accel', help='accel mode: kvm/tcg', required=False, 
 parser.add_argument('-E','--extra', help='extra options when run qemu', required=False, default="")
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
 parser.add_argument('--login', help='login to the VM', action='store_true')
+parser.add_argument('--login-fm', help='login to the FM VM', action='store_true')
 parser.add_argument('--poweroff', help='poweroff the VM', action='store_true')
 parser.add_argument('--shutdown', help='poweroff the VM', action='store_true')
+parser.add_argument('--poweroff-fm', help='poweroff the FM VM', action='store_true')
+parser.add_argument('--shutdown-fm', help='poweroff the FM VM', action='store_true')
 parser.add_argument('-C','--cmd', help='command to execute on VM', required=False, default="")
 parser.add_argument('--ndb', help='gdb ndctl on VM', required=False, default="")
 parser.add_argument('--qdb', help='gdb qemu', action='store_true')
@@ -402,6 +405,7 @@ parser.add_argument('--create-dcR', help='create a dc Region for a memdev', requ
 parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', required=False, default="")
 parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
 parser.add_argument('--setup-mctp', help='setup mctp test software', action='store_true')
+parser.add_argument('--setup-mctp-fm', help='setup mctp test software on FM', action='store_true')
 parser.add_argument('--try-mctp', help='try mctp test', action='store_true')
 # ras related commands
 parser.add_argument('--install-ras-tools', help='install ras related tool', action='store_true')
@@ -409,6 +413,7 @@ parser.add_argument('--inject-aer', help='inject aer', required=False, default="
 parser.add_argument('--test-fm', help='run FMAPI test workflow', action='store_true')
 parser.add_argument('--test-libcxlmi', help='run libcxlmi test workflow', action='store_true')
 parser.add_argument('--install-libcxlmi', help='install libcxlmi on VM', action='store_true')
+parser.add_argument('--install-libcxlmi-fm', help='install libcxlmi on FM VM', action='store_true')
 parser.add_argument('--start-vm', help='start vm with specified setup (regular, mctp)', required=False, default="")
 parser.add_argument('--setup-kernel-arm', help='configure and build kernel for aarch64', action='store_true')
 parser.add_argument('--build-kernel-arm', help='only build kernel for aarch64', action='store_true')
@@ -491,9 +496,17 @@ if args["run"] or args["run_direct"]:
 
 if args["login"]:
     login_vm()
+if args["login_fm"]:
+    port = tools.system_env("ssh_port")
+    port = int(port) + 1
+    login_vm(ssh_port = port)
 
 if args["poweroff"] or args["shutdown"]:
     shutdown_vm()
+if args["poweroff_fm"] or args["shutdown_fm"]:
+    port = tools.system_env("ssh_port")
+    port = int(port) + 1
+    shutdown_vm(ssh_port = port)
 
 if args["cmd"]:
     rs=execute_on_vm(args["cmd"])
@@ -530,6 +543,10 @@ if args["issue_qmp"]:
 cxl_test_tool_dir=system_path("cxl_test_tool_dir")
 if args["setup_mctp"]:
     mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
+if args["setup_mctp_fm"]:
+    os.environ["ssh_port"] = str(int(tools.system_env("ssh_port")) + 1)
+    mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
+    os.environ["ssh_port"] = str(int(tools.system_env("ssh_port")) - 1)
 if args["try_mctp"]:
     mctp.try_fmapi_test()
 
@@ -558,6 +575,18 @@ if args["install_libcxlmi"]:
         mctp.install_libcxlmi(branch=libcxlmi_branch)
     else:
         mctp.install_libcxlmi(url=libcxlmi_url, branch=libcxlmi_branch)
+
+if args["install_libcxlmi_fm"]:
+    os.environ["ssh_port"] = str(int(tools.system_env("ssh_port")) + 1)
+    libcxlmi_branch=tools.system_env("libcxlmi_branch")
+    libcxlmi_url=tools.system_env("libcxlmi_url")
+    if not libcxlmi_branch:
+        libcxlmi_branch = "main"
+    if not libcxlmi_url:
+        mctp.install_libcxlmi(branch=libcxlmi_branch)
+    else:
+        mctp.install_libcxlmi(url=libcxlmi_url, branch=libcxlmi_branch)
+    os.environ["ssh_port"] = str(int(tools.system_env("ssh_port")) - 1)
 
 if args["start_vm"]:
     if args["start_vm"] == "mctp":
@@ -590,13 +619,12 @@ if args["attach_fm"]:
         print("No VM has been started yet")
         exit(1)
     topo = sh_cmd("cat %s"%topo_file)
-    print(topo)
     if "share-mb=on" not in topo or "mb-share-init=on" not in topo:
         print("The target VM must have share-mb and mb-share-init on")
         exit(1)
-    topo = topo.replace("share-mb-init=on", "share-mb-init=off")
+    topo = topo.replace("mb-share-init=on", "mb-share-init=off")
     topo = topo.replace("host0", "host%s"%port_offset)
     qemu_dir=system_path("QEMU_ROOT")
-    kernel_img=system_path("FM_KERNEL_ROOT")+"/arch/arm64/boot/Image"
+    kernel_img=system_path("FM_KERNEL_ROOT")+"/arch/x86_64/boot/bzImage"
     qemu_img = system_path("FM_QEMU_IMG")
-    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH, qemu_img = qemu_img, port_offset = 1, allow_multivm=True)
+    run_qemu(qemu=QEMU, topo=topo, kernel=kernel_img, qemu_img = qemu_img, port_offset = 1, allow_multivm=True)

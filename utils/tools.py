@@ -182,8 +182,9 @@ def process_id(name):
             continue
     return -1
 
-def execute_on_vm(cmd, echo=False):
-    ssh_port = system_env("ssh_port")
+def execute_on_vm(cmd, echo=False, ssh_port = ""):
+    if not ssh_port:
+        ssh_port = system_env("ssh_port")
     usr = system_env("vm_usr")
     if not vm_is_running():
         print("VM is not running, exit")
@@ -443,9 +444,9 @@ def vm_is_running(key=""):
             continue
     return False
 
-def shutdown_vm():
+def shutdown_vm(ssh_port=""):
     if vm_is_running():
-        execute_on_vm("poweroff")
+        execute_on_vm("poweroff", ssh_port = ssh_port)
         time.sleep(2)
         if not vm_is_running():
             print("VM is powered off")
