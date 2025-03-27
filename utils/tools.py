@@ -42,7 +42,7 @@ def system_env(name):
         elif name == "cxl_test_log_dir":
             return "/tmp/cxl-logs"
         else:
-            print("env[%s] undefined, return empty"%name)
+            # print("warning: env[%s] undefined, return empty"%name)
             return ""
     else:
         return value.strip("\"")
