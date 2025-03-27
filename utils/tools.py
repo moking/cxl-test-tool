@@ -498,7 +498,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_i
             sh_cmd("mkdir -p %s"%host_dir)
         else:
             if len(os.listdir(host_dir)) != 0:
-                choice = input("back memory/lsa file exist from previous run, delete them Y/N(default Y): ")
+                choice = input("Info: back memory/lsa file exist under %s from previous run, delete them Y/N(default Y): "%host_dir)
                 if choice and choice.lower() == "n":
                     print("Warning: run with existing run files, may cause unexpected behavior!!!")
                 else:
