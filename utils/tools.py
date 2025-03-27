@@ -518,9 +518,14 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_i
     home=os.getenv("HOME")
 
     if accel_mode == "kvm":
-        if not os.access("/dev/kvm", os.R_OK) or not os.access("/dev/kvm", os.W_OK):
-            cmd = "sudo chmod 666 /dev/kvm"
-            sh_cmd(cmd,echo=True)
+        if os.path.exists("/dev/kvm"):
+            if not os.access("/dev/kvm", os.R_OK) or not os.access("/dev/kvm", os.W_OK):
+                cmd = "sudo chmod 666 /dev/kvm"
+                sh_cmd(cmd, echo=True)
+        else:
+            """ Handle the situation where /dev/kvm does not exist """
+            print("Warning: /dev/kvm does not exist. KVM acceleration cannot be used.")
+            accel_mode = "tcg"  # Switch to TCG (Tiny Code Generator) as a fallback
 
     qmp_port = system_env("qmp_port")
     if not qmp_port:
