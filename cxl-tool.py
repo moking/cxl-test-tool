@@ -414,6 +414,7 @@ parser.add_argument('--setup-kernel-arm', help='configure and build kernel for a
 parser.add_argument('--build-kernel-arm', help='only build kernel for aarch64', action='store_true')
 parser.add_argument('--start-arm', help='start a VM for aarch64', action='store_true')
 parser.add_argument('--test-einj', help='workflow: testing aer inject with [topo] as parameter', required=False, default="")
+parser.add_argument('--attach-fm', help='Attach FM VM to an existing VM', action='store_true')
 
 args = vars(parser.parse_args())
 
@@ -581,3 +582,21 @@ if args["start_arm"]:
     arm.start_vm(qemu_dir=qemu_dir, topo=topo, kernel=kernel_img, bios=bios)
 if args["test_einj"]:
     ras.test_aer_inject(args['test_einj'])
+
+if args["attach_fm"]:
+    topo_file = tools.system_env("cxl_test_log_dir") + "/topo0"
+    port_offset = 1
+    if not os.path.exists(topo_file):
+        print("No VM has been started yet")
+        exit(1)
+    topo = sh_cmd("cat %s"%topo_file)
+    print(topo)
+    if "share-mb=on" not in topo or "mb-share-init=on" not in topo:
+        print("The target VM must have share-mb and mb-share-init on")
+        exit(1)
+    topo = topo.replace("share-mb-init=on", "share-mb-init=off")
+    topo = topo.replace("host0", "host%s"%port_offset)
+    qemu_dir=system_path("QEMU_ROOT")
+    kernel_img=system_path("FM_KERNEL_ROOT")+"/arch/arm64/boot/Image"
+    qemu_img = system_path("FM_QEMU_IMG")
+    run_qemu(qemu=QEMU, topo=topo, kernel=KERNEL_PATH, qemu_img = qemu_img, port_offset = 1, allow_multivm=True)

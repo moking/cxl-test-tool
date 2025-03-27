@@ -55,11 +55,11 @@ def exec_shell_remote_direct(cmd, echo=False):
         print(cmd)
     subprocess.run(cmd, shell=True)
 
-def bg_cmd(cmd, echo=False):
+def bg_cmd(cmd, echo=False, port_offset = 0):
     log_dir=system_path("cxl_test_log_dir")
     if not log_dir:
         log_dir = "/tmp/"
-    run_log = log_dir+"/qemu.log"
+    run_log = log_dir+"/qemu%d.log"%port_offset
     fd=open(run_log, "w")
     if echo:
         print(cmd)
@@ -419,7 +419,7 @@ def configure_kernel(kernel_dir):
     cmd="cd %s; make menuconfig"%kernel_dir
     exec_shell_direct(cmd, echo=True)
 
-def vm_is_running():
+def vm_is_running(key=""):
     # Check bare metal if ssh port is 22.
     ssh_port = system_env("ssh_port")
     if ssh_port == "22":
@@ -434,8 +434,10 @@ def vm_is_running():
             continue
         try:
             # Check if the process name matches
-            if name in process.info['name']: 
-                return True
+            if name in process.info['name']:
+                cmd = process.cmdline()
+                if not key or key in cmd:
+                    return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             # Handle the cases where the process might terminate during iteration
             continue
@@ -476,16 +478,21 @@ def run_with_dcd_mctp():
             continue;
     return has_dcd,has_mctp
 
-def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
-    if vm_is_running():
+def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_img="", port_offset=0, allow_multivm=False):
+    if not allow_multivm and vm_is_running():
         print("VM is running, exit")
         return;
     
     extra_opts = system_env("qemu_extra_opt")
     # update the image directory
     host_dir=system_env("cxl_host_dir")
+    if host_dir.endswith("/"):
+        host_dir = host_dir[:-1]+"%s"%port_offset
+    else:
+        host_dir += "%s"%port_offset
     if host_dir:
-        topo = topo.replace("/tmp",host_dir)
+        if "/tmp/host" not in topo:
+            topo = topo.replace("/tmp",host_dir)
         if not os.path.exists(host_dir):
             sh_cmd("mkdir -p %s"%host_dir)
         else:
@@ -496,8 +503,10 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
                 else:
                     exec_shell_direct("rm -rf %s/*"%host_dir)
 
-    ssh_port=system_env("ssh_port")
-    net_config = system_env("net_config")
+    ssh_port=int(system_env("ssh_port")) + port_offset;
+    # net_config = system_env("net_config")
+    net_config="-netdev user,id=network0,hostfwd=tcp::%d-:22 \
+    -device e1000,netdev=network0"%ssh_port
     log_dir = system_path("cxl_test_log_dir")
     if not log_dir:
         log_dir = "/tmp/"
@@ -515,16 +524,22 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
     qmp_port = system_env("qmp_port")
     if not qmp_port:
         qmp_port = 4445
+    qmp_port = int(qmp_port) + port_offset
     SHARED_CFG="-qmp tcp:localhost:%s,server,wait=off"%qmp_port
 
     monitor_port = system_env("monitor_port")
     if not monitor_port:
         monitor_port= 12346
+    monitor_port = int(monitor_port) + port_offset
 
     # Add -s here if needed
     gdb_port=system_env("gdb_port")
     if not gdb_port:
         gdb_port = "1234"
+    gdb_port = int(gdb_port)  + port_offset
+
+    if not qemu_img:
+        qemu_img = system_path("QEMU_IMG")
     cmd=" -gdb tcp::%s "%gdb_port+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
@@ -532,28 +547,28 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False):
             " -nographic " + \
             " "+SHARED_CFG+" "+ net_config + " "+\
             " -monitor telnet:127.0.0.1:%s,server,"%monitor_port+wait_flag+\
-            " -drive file="+system_path("QEMU_IMG")+",index=0,media=disk,format="+format+\
+            " -drive file="+qemu_img+",index=0,media=disk,format="+format+\
             " -machine q35,cxl=on -cpu qemu64,mce=on -m 8G,maxmem=64G,slots=8 "+ \
             " -virtfs local,path=/opt/lib/modules,mount_tag=modshare,security_model=mapped "+\
             " -virtfs local,path=%s"%home+",mount_tag=homeshare,security_model=mapped "+ topo
 
-    write_to_file("%s/run-cmd"%log_dir, bin+cmd)
-    write_to_file("%s/gdb-run-cmd"%log_dir, "gdb --args "+bin+cmd)
+    write_to_file("%s/run-cmd%d"%(log_dir, port_offset), bin+cmd)
+    write_to_file("%s/gdb-run-cmd%d"%(log_dir, port_offset), "gdb --args "+bin+cmd)
     if not run_direct:
-        bg_cmd(bin+cmd)
+        bg_cmd(bin+cmd, port_offset = port_offset)
     else:
         exec_shell_direct(bin+cmd)
-    status_file="%s/qemu-status"%log_dir
-    if vm_is_running():
+    status_file="%s/qemu-status%d"%(log_dir, port_offset)
+    if vm_is_running(key="tcp::%s"%gdb_port):
         write_to_file(status_file, "QEMU:running")
-        write_to_file("%s/topo"%log_dir, topo);
+        write_to_file("%s/topo%d"%(log_dir, port_offset), topo);
         usr = system_path("vm_usr")
         if not usr:
             usr = "root"
         print("QEMU instance is up, access it: ssh %s@localhost -p %s"%(usr, ssh_port))
     else:
         write_to_file(status_file, "")
-        print("Start Qemu failed, check %s/qemu.log for more information"%log_dir)
+        print("Start Qemu failed, check %s/qemu%d.log for more information"%(log_dir, port_offset))
 
 def git_clone(url, branch, dst_dir):
     if os.path.exists(dst_dir) and len(os.listdir(dst_dir)) > 0:
