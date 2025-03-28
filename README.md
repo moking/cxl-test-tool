@@ -72,7 +72,7 @@ cxl-tool.py --run -A kvm --create-topo
 cxl-tool.py --install-ndctl
 
 ## Install ndctl, install cxl modules, setup cxl memory
-cxl-tool.py --cxl-pmem-setup mem0
+cxl-tool.py --cxl-pmem-test mem0
 
 ## debug qemu
 cxl-tool.py --qdb
