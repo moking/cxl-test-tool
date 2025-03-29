@@ -484,7 +484,8 @@ if args["topo"]:
         exit(1)
 
 if args["create_topo"]:
-    topo=gen_cxl_topology()
+    file = tools.system_path("cxl_test_tool_dir") + "/.cxl-topology.xml"
+    topo=gen_cxl_topology(file=file)
 
 if args["run"] or args["run_direct"]:
     if not topo:
