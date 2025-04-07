@@ -620,12 +620,12 @@ if args["attach_fm"]:
         print("No VM has been started yet")
         exit(1)
     topo = sh_cmd("cat %s"%topo_file)
-    if "share-mb=on" not in topo or "mb-share-init=on" not in topo:
+    if "allow-fm-attach=on" not in topo or "mctp-buf-init=on" not in topo:
         print("The target VM must have share-mb and mb-share-init on")
         exit(1)
-    topo = topo.replace("mb-share-init=on", "mb-share-init=off")
-    topo = topo.replace("host0", "host%s"%port_offset)
+
     qemu_dir=system_path("QEMU_ROOT")
     kernel_img=system_path("FM_KERNEL_ROOT")+"/arch/x86_64/boot/bzImage"
     qemu_img = system_path("FM_QEMU_IMG")
+    topo = cxl.find_topology(args["topo"])
     run_qemu(qemu=QEMU, topo=topo, kernel=kernel_img, qemu_img = qemu_img, port_offset = 1, allow_multivm=True)
