@@ -224,6 +224,11 @@ def parse_json(file):
 
 def output_to_json_data(output):
     file=system_path("cxl_test_log_dir")+"/tmp.json"
+    i = 0;
+    for i, c in enumerate(output):
+        if c in "{[":
+            break;
+    output = output[i:]
     write_to_file(file, output)
     data=parse_json(file)
     return data

@@ -79,7 +79,7 @@ FM_TARGET="-object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,siz
  -device cxl-downstream,port=0,bus=us0,id=swport0,chassis=0,slot=4 \
  -device cxl-downstream,port=1,bus=us0,id=swport1,chassis=0,slot=5 \
  -device cxl-downstream,port=3,bus=us0,id=swport2,chassis=0,slot=6 \
- -device cxl-type3,bus=swport2,volatile-dc-memdev=cxl-mem2,id=cxl-dcd0,lsa=cxl-lsa2,num-dc-regions=2,sn=99,allow-fm-attach=on,mctp-buf-init=on \
+ -device cxl-type3,bus=swport2,volatile-dc-memdev=cxl-mem2,id=cxl-dcd0,lsa=cxl-lsa2,num-dc-regions=1,sn=99,allow-fm-attach=on,mctp-buf-init=on \
  -machine cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=1k \
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=4,target=us0 \
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=6,target=cxl-dcd0 \
@@ -94,7 +94,7 @@ FM_CLIENT="-object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,siz
  -device cxl-downstream,port=0,bus=us0,id=swport0,chassis=0,slot=4 \
  -device cxl-downstream,port=1,bus=us0,id=swport1,chassis=0,slot=5 \
  -device cxl-downstream,port=3,bus=us0,id=swport2,chassis=0,slot=6 \
- -device cxl-type3,bus=swport2,volatile-dc-memdev=cxl-mem2,id=cxl-dcd0,lsa=cxl-lsa2,num-dc-regions=2,sn=99,allow-fm-attach=on \
+ -device cxl-type3,bus=swport2,volatile-dc-memdev=cxl-mem2,id=cxl-dcd0,lsa=cxl-lsa2,num-dc-regions=1,sn=99,allow-fm-attach=on \
  -machine cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=1k \
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=4,target=us0 \
  -device i2c_mctp_cxl,bus=aspeed.i2c.bus.0,address=6,target=cxl-dcd0,qmp=127.0.0.1:4445,mctp-msg-forward=on \
@@ -216,7 +216,7 @@ def find_cmdline_device_id(memdev):
             continue;
 
 def find_mode(memdev):
-    file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
+    # file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
     rs=tools.execute_on_vm("cxl list -i -m %s"%memdev)
     data=tools.output_to_json_data(rs)
     if not data:
@@ -227,7 +227,7 @@ def find_mode(memdev):
     return "dc0"
 
 def memdev_size(memdev):
-    file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
+    # file=tools.system_path("cxl_test_log_dir")+"/tmp.json"
     rs=tools.execute_on_vm("cxl list -i -m %s"%memdev)
     data=tools.output_to_json_data(rs)
     if not data:
@@ -298,14 +298,9 @@ def create_region(memdev):
     print("# "+cmd)
     output=tools.execute_on_vm(cmd)
     print(output)
-
-    tools.write_to_file(file, output)
-    with open(file, "r") as f:
-        for line in f:
-            if "\"region\"" in line:
-                rs = line.split(":")[1].replace(",", "").strip()
-                return rs
-        return ""
+    region_info = tools.output_to_json_data(output)
+    region = region_info.get("region", "")
+    return region
 
 def destroy_region(region):
     if not region:
@@ -388,13 +383,24 @@ def create_dc_region(memdev):
         enable_memdev(memdev)
 
     mode=find_mode(memdev)
-    if not mode.startswith("dc"):
+    if not mode.startswith("dc") and not mode.startswith("dynamic"):
         print("%s is not DCD device, skip"%memdev)
         return ""
 
     region=region_exists_for_device(memdev)
     if region:
         print("%s already created for %s, return directly"%(region, memdev))
+        return region
+
+    # This is from the last kernel code, for creating region, we use
+    #  cxl create-region -m mem0 -d decoder0.0 -s 4G -t dynamic_ram_a
+    if mode.startswith("dynamic"):
+        size=memdev_size(memdev)
+        cmd = "cxl create-region -m mem0 -d decoder0.0 -s %s -t dynamic_ram_a"%size
+        rs = tools.execute_on_vm(cmd)
+        print(rs)
+        region_info = tools.output_to_json_data(rs)
+        region = region_info.get("region", "")
         return region
 
     num=find_endpoint_num(memdev)
