@@ -356,7 +356,11 @@ def dcd_test(memdev):
     print(dev)
     dcd.handle_dc_extents_op(memdev)
 
-    ans=input("Do you want to continue to create dax device for DC(Y/N):")
+    ans = "N"
+    try:
+        ans=input("Do you want to continue to create dax device for DC(Y/N):")
+    except EOFError:
+        pass
     if not ans or ans.lower() == "n":
         return
     dax=cxl.create_dax_device(region, echo=True)

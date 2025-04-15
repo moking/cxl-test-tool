@@ -176,6 +176,8 @@ def device_is_active(memdev):
     cmd="cxl list -i -m %s"%memdev
     rs=tools.execute_on_vm(cmd)
     data = tools.output_to_json_data(rs)
+    if not data:
+        return False;
     for key in data[0].keys():
         if key == "state":
             if data[0][key] == "disabled":
@@ -378,6 +380,15 @@ def create_dax_device(region, echo=False):
 def create_dc_region(memdev):
     if not memdev:
         return ""
+
+    if not cxl_driver_loaded():
+        print("Load cxl drivers")
+        load_driver();
+
+    region=region_exists_for_device(memdev)
+    if region:
+        print("%s already created for %s, exit"%(region, memdev))
+        return region
 
     if not device_is_active(memdev):
         enable_memdev(memdev)

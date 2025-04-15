@@ -111,7 +111,11 @@ def handle_dc_extents_op(memdev):
         return
     
     while True:
-        choice=input("Choose OP: 0: add, 1: release, 2: print extent, 9: exit\nChoice: ")
+        choice=""
+        try:
+            choice=input("Choose OP: 0: add, 1: release, 2: print extent, 9: exit\nChoice: ")
+        except EOFError:
+            pass
         if choice == "0":
             extents=input("Input extent to add, for example (unit: MB): 0-128[,128-256]\nExtents: ")
             f=create_add_extent_qmp_input(dev,extents=extents)

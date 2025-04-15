@@ -503,7 +503,11 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_i
             sh_cmd("mkdir -p %s"%host_dir)
         else:
             if len(os.listdir(host_dir)) != 0:
-                choice = input("Info: back memory/lsa file exist under %s from previous run, delete them Y/N(default Y): "%host_dir)
+                try:
+                    choice = input("Info: back memory/lsa file exist under %s from previous run, delete them Y/N(default Y): "%host_dir)
+                except EOFError:
+                    choice = "Y"
+
                 if choice and choice.lower() == "n":
                     print("Warning: run with existing run files, may cause unexpected behavior!!!")
                 else:
@@ -576,10 +580,12 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_i
         usr = system_path("vm_usr")
         if not usr:
             usr = "root"
-        print("QEMU instance is up, access it: ssh %s@localhost -p %s"%(usr, ssh_port))
+        print("QEMU instance is up, access it: ssh %s@localhost -p %s"%(usr, ssh_port),
+              flush = True)
     else:
         write_to_file(status_file, "")
-        print("Start Qemu failed, check %s/qemu%d.log for more information"%(log_dir, port_offset))
+        print("Start Qemu failed, check %s/qemu%d.log for more information"%(log_dir, port_offset),
+              flush = True)
 
 def git_clone(url, branch, dst_dir):
     if os.path.exists(dst_dir) and len(os.listdir(dst_dir)) > 0:
