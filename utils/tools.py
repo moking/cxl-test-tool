@@ -264,9 +264,12 @@ def issue_qmp_cmd(file):
     cmd="cat %s|ncat localhost %s"%(file, port)
     sh_cmd(cmd, echo=True)
 
-def setup_qemu(url, branch, qemu_dir, arch="x86_64-softmmu", debug=True, reconfig=True):
+def setup_qemu(url, branch, qemu_dir, arch="", debug=True, reconfig=True):
     git_clone=True
     qemu_dir=os.path.expanduser(qemu_dir)
+
+    if not arch:
+        arch=sh_cmd("uname -m")+"-softmmu"
 
     if not qemu_dir:
         return
