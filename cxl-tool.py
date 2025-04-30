@@ -399,6 +399,7 @@ parser.add_argument('--destroy-region', help='destroy cxl region', required=Fals
 parser.add_argument('--setup-qemu', help='setup qemu', action='store_true')
 parser.add_argument('--setup-qemu-arm', help='setup qemu for aarch64', action='store_true')
 parser.add_argument('--setup-kernel', help='setup kernel', action='store_true')
+parser.add_argument('--setup-kernel-fm', help='setup kernel for fm', action='store_true')
 parser.add_argument('--kconfig', help='configure kernel with menuconfig', action='store_true')
 parser.add_argument('-BQ', '--build-qemu', help='build qemu', action='store_true')
 parser.add_argument('-BK', '--build-kernel', help='build kernel', action='store_true')
@@ -471,6 +472,8 @@ if args["setup_qemu_arm"]:
     tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=system_path("QEMU_ROOT"), arch="aarch64-softmmu", debug=False)
 if args["setup_kernel"]:
     tools.setup_kernel(url=os.getenv("kernel_url"), branch=os.getenv("kernel_branch"), kernel_dir=system_path("KERNEL_ROOT"))
+if args["setup_kernel_fm"]:
+    mctp.setup_kernel(kernel_dir=system_path("FM_KERNEL_ROOT"))
 if args["build_qemu"]:
     tools.build_qemu(qemu_dir=system_path("QEMU_ROOT"))
 if args["build_kernel"]:

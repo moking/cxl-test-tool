@@ -46,7 +46,7 @@ def try_fmapi_test():
     cmd="cd %s; ./cxl-mctp-test 8; ./cxl-mctp-test 9; ./cxl-mctp-test 10"%test_dir
     tools.execute_on_vm(cmd, echo=True)
 
-def prepare_fm_test(topo="FM"):
+def prepare_fm_test(topo="FM", qemu_dir=""):
     url="https://github.com/torvalds/linux"
     branch="v6.6-rc6"
     dire=os.path.expanduser("~/cxl/linux-%s"%branch)
@@ -68,10 +68,11 @@ def prepare_fm_test(topo="FM"):
     else:
         print("mctp patches already applied, continue...")
 
-    qemu_dir = os.path.expanduser("~/cxl/qemu-mctp")
-    url="https://gitlab.com/jic23/qemu.git"
-    branch="cxl-2024-08-20"
-    tools.setup_qemu(url=url, branch=branch, qemu_dir=qemu_dir, reconfig=True)
+    if not qemu_dir:
+        qemu_dir = os.path.expanduser("~/cxl/qemu-mctp")
+        url="https://gitlab.com/jic23/qemu.git"
+        branch="cxl-2024-08-20"
+        tools.setup_qemu(url=url, branch=branch, qemu_dir=qemu_dir, reconfig=True)
 
     QEMU=qemu_dir+"/build/qemu-system-x86_64"
     #qpatch=test_dir+"/test-workflows/mctp/mctp-patches-qemu.patch"
@@ -124,6 +125,28 @@ def run_libcxlmi_test(url="https://github.com/moking/libcxlmi.git", branch="main
 
     cmd = "cd %s; ./build/examples/cxl-mctp"%target_dir
     tools.execute_on_vm(cmd, echo=True)
+
+def setup_kernel(kernel_dir):
+    url="https://github.com/torvalds/linux"
+    branch="v6.6-rc6"
+    dire=os.path.expanduser("~/cxl/linux-%s"%branch)
+    os.environ["KERNEL_ROOT"]=dire
+    test_dir=tools.system_path("cxl_test_tool_dir")
+    kconfig=test_dir+"/test-workflows/mctp/kernel.config"
+    tools.setup_kernel(url=url, branch=branch, kernel_dir=dire, kconfig=kconfig)
+
+    key="i2c-aspeed"
+    cmd="cd %s; git log -n 1 | grep -c %s"%(dire, key)
+    if tools.sh_cmd(cmd) == "0":
+        print("Apply mctp patches ...")
+        kpatch=test_dir+"/test-workflows/mctp/mctp-patches-kernel.patch"
+        cmd="cd %s; git am --reject %s"%(dire, kpatch)
+        tools.sh_cmd(cmd, echo=True)
+        tools.build_kernel(dire, install = False)
+    else:
+        print("mctp patches already applied, continue...")
+
+    print("Set FM_KERNEL_ROOT to %s in .vars.config"%dire)
 
 def setup_vm_for_mctp(kernel="~/cxl/linux-v6.6-rc6", qemu_dir="~/cxl/qemu-mctp"):
     print("Setup VM for MCTP")
