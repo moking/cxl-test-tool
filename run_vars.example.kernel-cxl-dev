@@ -1,0 +1,31 @@
+#! /bin/bash
+
+dbg_opt="cxl_acpi.dyndbg=+fplm cxl_pci.dyndbg=+fplm cxl_core.dyndbg=+fplm cxl_mem.dyndbg=+fplm cxl_pmem.dyndbg=+fplm cxl_port.dyndbg=+fplm cxl_region.dyndbg=+fplm cxl_test.dyndbg=+fplm cxl_mock.dyndbg=+fplm cxl_mock_mem.dyndbg=+fplm dax.dyndbg=+fplm dax_cxl.dyndbg=+fplm device_dax.dyndbg=+fplm"
+edac_debug="edac_debug_level=4"
+KERNEL_CMD="root=/dev/sda rw console=ttyS0,115200 ignore_loglevel nokaslr ${dbg_opt} ${edac_debug}"
+SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
+ssh_port=2024
+net_config="-netdev user,id=network0,hostfwd=tcp::${ssh_port}-:22 -device e1000,netdev=network0" 
+#user name for the VM, by default it is "root"
+vm_usr="root"
+
+accel_mode="kvm"
+
+cxl_test_tool_dir="~/cxl/cxl-test-tool/"
+cxl_test_log_dir="/tmp/cxl-logs/"
+cxl_host_dir="/tmp/host/"
+
+ndctl_url="https://github.com/pmem/ndctl"
+ndctl_branch="main"
+kernel_url="https://git.kernel.org/pub/scm/linux/kernel/git/cxl/cxl.git/"
+kernel_branch="fixes"
+qemu_url="https://gitlab.com/qemu-project/qemu.git"
+qemu_branch="master"
+
+KERNEL_ROOT=~/cxl/linux-fixes/
+QEMU_ROOT=~/cxl/qemu/
+QEMU_IMG=~/cxl/images/qemu-image.img
+
+qmp_port=4445
+monitor_port=12346
+gdb_port=1234
