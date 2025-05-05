@@ -3,6 +3,7 @@ import time
 import psutil
 import json
 import os
+import re
 
 def sh_cmd(cmd, echo=False):
     if echo:
@@ -223,15 +224,15 @@ def parse_json(file):
             return data
 
 def output_to_json_data(output):
-    file=system_path("cxl_test_log_dir")+"/tmp.json"
-    i = 0;
-    for i, c in enumerate(output):
-        if c in "{[":
-            break;
-    output = output[i:]
-    write_to_file(file, output)
-    data=parse_json(file)
-    return data
+    # Regex matches the first {...} or [{...}] block
+    match = re.search(r'(\{.*\}|\[\s*\{.*\}\s*\])', output, re.DOTALL)
+    if match:
+        json_str = match.group()
+        try:
+            return json.loads(json_str)  # Returns Python dict or list
+        except json.JSONDecodeError as e:
+            print("Invalid JSON:", e)
+    return None
 
 def qmp_port():
     name="qemu-system"

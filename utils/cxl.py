@@ -411,7 +411,10 @@ def create_dc_region(memdev):
         rs = tools.execute_on_vm(cmd)
         print(rs)
         region_info = tools.output_to_json_data(rs)
-        region = region_info.get("region", "")
+        if region_info:
+            region = region_info.get("region", "")
+        else:
+            region = ""
         return region
 
     num=find_endpoint_num(memdev)
