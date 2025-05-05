@@ -426,10 +426,23 @@ parser.add_argument('--start-arm', help='start a VM for aarch64', action='store_
 parser.add_argument('--test-einj', help='workflow: testing aer inject with [topo] as parameter', required=False, default="")
 parser.add_argument('--attach-fm', help='Attach FM VM to an existing VM', action='store_true')
 
+parser.add_argument('--set-vars', help='choose a config file as .vars.config',
+                    required = False, default="")
+
 args = vars(parser.parse_args())
 
 if args["verbose"]:
     print(args)
+
+if args["set_vars"]:
+    f = args["set_vars"]
+    print("This will copy %s as .vars.config"%f)
+    if os.path.exists(f):
+        cmd = "cp %s .vars.config"%f
+        sh_cmd(cmd, echo = True)
+    else:
+        print("Error: file %s not found!!"%f);
+    exit(0)
 
 user=sh_cmd("whoami")
 tmp_config="/tmp/.vars.config-%s"%user
