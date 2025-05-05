@@ -1,0 +1,33 @@
+#! /bin/bash
+
+run_opts_file=/tmp/run_opts
+dbg_opt="cxl_acpi.dyndbg=+fplm cxl_pci.dyndbg=+fplm cxl_core.dyndbg=+fplm cxl_mem.dyndbg=+fplm cxl_pmem.dyndbg=+fplm cxl_port.dyndbg=+fplm cxl_region.dyndbg=+fplm cxl_test.dyndbg=+fplm cxl_mock.dyndbg=+fplm cxl_mock_mem.dyndbg=+fplm dax.dyndbg=+fplm dax_cxl.dyndbg=+fplm device_dax.dyndbg=+fplm"
+edac_debug="edac_debug_level=4"
+KERNEL_CMD="root=/dev/sda rw console=ttyS0,115200 ignore_loglevel nokaslr ${dbg_opt} ${edac_debug}"
+SHARED_CFG="-qmp tcp:localhost:4444,server,wait=off"
+ssh_port=2024
+net_config="-netdev user,id=network0,hostfwd=tcp::${ssh_port}-:22 -device e1000,netdev=network0" 
+#user name for the VM, by default it is "root"
+vm_usr="root"
+
+accel_mode="kvm"
+cxl_test_tool_dir="~/cxl/cxl-test-tool/"
+cxl_test_log_dir="/tmp/cxl-logs/"
+cxl_host_dir="/tmp/host/"
+
+
+#DCD 
+QEMU_ROOT=~/cxl/jic/qemu/
+QEMU_IMG=~/cxl/images/qemu-image.img
+FM_KERNEL_ROOT=~/cxl/linux-v6.6-rc6
+FM_QEMU_IMG=~/cxl/images/qemu-image-fm.img
+
+qemu_branch='dcd-compression'
+qemu_url="git+ssh://git@github.com/moking/qemu-jic-clone.git"
+KERNEL_ROOT=/home/fan/cxl/linux-dcd
+kernel_url="https://github.com/weiny2/linux-kernel.git"
+kernel_branch="dcd-v6-2025-04-13"
+ndctl_url="https://github.com/weiny2/ndctl.git"
+ndctl_branch="dcd-region3-2025-04-13"
+libcxlmi_branch="fixes"
+libcxlmi_url="https://github.com/moking/libcxlmi.git"
