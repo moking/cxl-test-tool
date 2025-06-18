@@ -124,12 +124,33 @@ SW="-object memory-backend-file,id=cxl-mem0,share=on,mem-path=/tmp/cxltest.raw,s
     -device cxl-type3,bus=swport3,memdev=cxl-mem3,lsa=cxl-lsa3,id=cxl-pmem3 \
     -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=4k"
 
+FM_USB="-object memory-backend-file,id=cxl-mem1,mem-path=/tmp/t3_cxl1.raw,size=256M \
+ -object memory-backend-file,id=cxl-lsa1,mem-path=/tmp/t3_lsa1.raw,size=1M \
+ -object memory-backend-file,id=cxl-mem2,mem-path=/tmp/t3_cxl2.raw,size=4G \
+ -object memory-backend-file,id=cxl-lsa2,mem-path=/tmp/t3_lsa2.raw,size=1M \
+ -device usb-ehci,id=ehci \
+ -device pxb-cxl,bus_nr=12,bus=pcie.0,id=cxl.1,hdm_for_passthrough=true \
+ -device cxl-rp,port=0,bus=cxl.1,id=cxl_rp_port0,chassis=0,slot=2 \
+ -device cxl-upstream,port=2,sn=1234,bus=cxl_rp_port0,id=us0,addr=0.0,multifunction=on, \
+ -device cxl-switch-mailbox-cci,bus=cxl_rp_port0,addr=0.1,target=us0 \
+ -device cxl-downstream,port=0,bus=us0,id=swport0,chassis=0,slot=4 \
+ -device cxl-downstream,port=1,bus=us0,id=swport1,chassis=0,slot=5 \
+ -device cxl-downstream,port=3,bus=us0,id=swport2,chassis=0,slot=6 \
+ -device cxl-type3,bus=swport0,memdev=cxl-mem1,id=cxl-pmem1,lsa=cxl-lsa1,sn=3 \
+ -device cxl-type3,bus=swport2,volatile-dc-memdev=cxl-mem2,id=cxl-dcd0,lsa=cxl-lsa2,num-dc-regions=2,sn=99 \
+ -machine cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G,cxl-fmw.0.interleave-granularity=1k \
+ -device virtio-rng-pci,bus=swport1 \
+ -device usb-cxl-mctp,bus=ehci.0,id=usb1,target=us0 \
+ -device usb-cxl-mctp,bus=ehci.0,id=usb2,target=cxl-pmem1"
+
+
 topos = {
     "RP1": RP1,
     "FM": FM,
     "FM_CLIENT": FM_CLIENT,
     "FM_TARGET": FM_TARGET,
-    "SW": SW
+    "SW": SW,
+    "FM_USB": FM_USB
 }
 
 def find_topology(top):

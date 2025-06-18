@@ -23,12 +23,37 @@ def install_mctp_pkg():
     tools.execute_on_vm("cd %s; cp conf/mctpd-dbus.conf /etc/dbus-1/system.d/"%mctp_dir, echo=True)
     tools.execute_on_vm("cd %s; cat conf/mctpd.service | sed 's/sbin/local\\/sbin/' > /etc/systemd/system/mctpd.service"%mctp_dir, echo=True)
 
+# this is from mctp over usb setup
+def install_mctp_pkg_usb():
+    url="https://github.com/CodeConstruct/mctp.git"
+    mctp_dir="/tmp/mctp"
+    
+    if not tools.command_found_on_vm("mctp"):
+        tools.install_packages_on_vm("libsystemd-dev python3-pytest meson")
+    else:
+        if tools.path_exist_on_vm("/etc/systemd/system/mctpd.service"):
+            print("mctpd service already configured, skip")
+            return
+
+    print("install mctp program")
+    if not tools.path_exist_on_vm(mctp_dir):
+        tools.execute_on_vm("git clone %s %s"%(url, mctp_dir), echo=True)
+
+    tools.execute_on_vm("cd %s; meson setup obj; ninja -C obj; meson install -C obj"%mctp_dir, echo=True)
+    tools.execute_on_vm("cd %s; cp conf/mctpd-dbus.conf /etc/dbus-1/system.d/"%mctp_dir, echo=True)
+    tools.execute_on_vm("cd %s; cat conf/mctpd.service | sed 's/sbin/local\\/sbin/' > /etc/systemd/system/mctpd.service"%mctp_dir, echo=True)
+
+
 
 def mctp_setup(mctp_sh):
+    print(mctp_sh)
     if not tools.vm_is_running():
         print("VM is not running")
         return
-    install_mctp_pkg()
+    if "usb" in mctp_sh:
+        install_mctp_pkg_usb()
+    else:
+        install_mctp_pkg()
     remote_file="/tmp/mctp-setup.sh"
     tools.copy_to_remote(mctp_sh, dst=remote_file)
     tools.execute_on_vm("bash %s"%remote_file, echo=True)

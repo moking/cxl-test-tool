@@ -410,6 +410,7 @@ parser.add_argument('--create-dcR', help='create a dc Region for a memdev', requ
 parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', required=False, default="")
 parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
 parser.add_argument('--setup-mctp', help='setup mctp test software', action='store_true')
+parser.add_argument('--setup-mctp-usb', help='setup mctp test software for mctp over usb setup', action='store_true')
 parser.add_argument('--setup-mctp-fm', help='setup mctp test software on FM', action='store_true')
 parser.add_argument('--try-mctp', help='try mctp test', action='store_true')
 # ras related commands
@@ -564,6 +565,10 @@ if args["issue_qmp"]:
 cxl_test_tool_dir=system_path("cxl_test_tool_dir")
 if args["setup_mctp"]:
     mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
+
+if args["setup_mctp_usb"]:
+    mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp-usb.sh")
+
 if args["setup_mctp_fm"]:
     os.environ["ssh_port"] = str(int(tools.system_env("ssh_port")) + 1)
     mctp.mctp_setup(cxl_test_tool_dir+"/test-workflows/mctp.sh")
