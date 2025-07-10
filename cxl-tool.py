@@ -378,6 +378,7 @@ parser.add_argument('-v','--verbose', help='show more message', action='store_tr
 parser.add_argument('-R','--run', help='start qemu instance in background', action='store_true')
 parser.add_argument('--run-direct', help='start qemu instance', action='store_true')
 parser.add_argument('-T','--topo', help='cxl topology to use', required=False, default="")
+parser.add_argument('--raw', action='store_true', help='The raw QEMU topology string. Only used with T/--topo')
 parser.add_argument('-A','--accel', help='accel mode: kvm/tcg', required=False, default="kvm")
 parser.add_argument('-E','--extra', help='extra options when run qemu', required=False, default="")
 parser.add_argument('--create-topo', help='use xml to generate topology', action='store_true')
@@ -498,11 +499,17 @@ if args["kconfig"]:
 if args["create_image"]:
     create_qemu_image(img_path=system_path("QEMU_IMG"))
 
+if args["raw"] and not args["topo"]:
+    parser.error('--raw requires --topo/-T')
+
 if args["topo"]:
-    topo = cxl.find_topology(args["topo"])
-    if not topo:
-        print("No valid static topology found!")
-        exit(1)
+    if args["raw"]:
+        topo = args["topo"]
+    else:
+        topo = cxl.find_topology(args["topo"])
+        if not topo:
+            print("No valid static topology found!")
+            exit(1)
 
 if args["create_topo"]:
     file = tools.system_path("cxl_test_tool_dir") + "/.cxl-topology.xml"
