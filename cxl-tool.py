@@ -408,6 +408,8 @@ parser.add_argument('--create-image', help='create a qemu image', action='store_
 parser.add_argument('--cxl-pmem-test', help='online pmem as system ram', required=False, default="")
 parser.add_argument('--cxl-vmem-test', help='online vmem as system ram', required=False, default="")
 parser.add_argument('--create-dcR', help='create a dc Region for a memdev', required=False, default="")
+parser.add_argument('-M','--mode', help='DC decoder mode (ram_a)',
+                    required=False, default="ram_a")
 parser.add_argument('--dcd-test', help='dcd test workflow for a memdev', required=False, default="")
 parser.add_argument('--issue-qmp', help='Issue QMP command from a file to VM', required=False, default="")
 parser.add_argument('--setup-mctp', help='setup mctp test software', action='store_true')
@@ -473,6 +475,8 @@ KERNEL_PATH=system_path("KERNEL_ROOT")+"/arch/x86/boot/bzImage"
 
 if args["extra"]:
     os.environ["qemu_extra_opt"] = args["extra"]
+if args["mode"]:
+    os.environ["dc_mode"] = "dynamic_" + args["mode"]
 
 if args["setup_qemu"]:
     tools.setup_qemu(url=os.getenv("qemu_url"), branch=os.getenv("qemu_branch"), qemu_dir=system_path("QEMU_ROOT"))

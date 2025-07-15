@@ -1,3 +1,4 @@
+import os;
 import utils.tools as tools
 import psutil;
 
@@ -428,7 +429,8 @@ def create_dc_region(memdev):
     #  cxl create-region -m mem0 -d decoder0.0 -s 4G -t dynamic_ram_a
     if mode.startswith("dynamic"):
         size=memdev_size(memdev)
-        cmd = "cxl create-region -m mem0 -d decoder0.0 -s %s -t dynamic_ram_a"%size
+        cmd = "cxl create-region -m mem0 -d decoder0.0 -s %s -t %s"%(size,
+                                                                     os.getenv("dc_mode"))
         rs = tools.execute_on_vm(cmd)
         print(rs)
         region_info = tools.output_to_json_data(rs)

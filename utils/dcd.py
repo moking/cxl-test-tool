@@ -20,9 +20,19 @@ def format_extent_list(extent_list):
         ext_list.append(item)
     return ext_list
 
+def dc_region_idx():
+    mode = os.getenv("dc_mode", "")
+    if not mode:
+        return 0;
+    m = mode.split("_")
+    if not m:
+        return 0
+    return int(m[2])
+
 def create_add_extent_qmp_input(dev, extents):
     op="cxl-add-dynamic-capacity"
 
+    idx = dc_region_idx()
     ext_list=format_extent_list(extents)
     body=[
     { "execute": "qmp_capabilities" }
@@ -32,7 +42,7 @@ def create_add_extent_qmp_input(dev, extents):
         "path": "/machine/peripheral/%s"%dev,
         "host-id": 0,
         "selection-policy": "prescriptive",
-        "region": 0,
+        "region": idx,
         "extents": ext_list
     }
     }]
@@ -46,6 +56,7 @@ def create_add_extent_qmp_input(dev, extents):
 def create_release_extent_qmp_input(dev, extents):
     op="cxl-release-dynamic-capacity"
     
+    idx = dc_region_idx()
     ext_list=format_extent_list(extents)
     body=[
     { "execute": "qmp_capabilities" }
@@ -56,7 +67,7 @@ def create_release_extent_qmp_input(dev, extents):
         "host-id": 0,
         "removal-policy":"prescriptive",
         "forced-removal": False,
-        "region": 0,
+        "region": idx,
         "extents":ext_list
     }
     }]
