@@ -425,10 +425,10 @@ def create_dc_region(memdev):
         return region
 
     # This is from the last kernel code, for creating region, we use
-    #  cxl create-region -m mem0 -d decoder0.0 -s 4G -t dynamic_ram_a
+    #  cxl create-region -m mem0 -d decoder0.0 -s 4G -t dynamic_ram_0
     if mode.startswith("dynamic"):
         size=memdev_size(memdev)
-        cmd = "cxl create-region -m mem0 -d decoder0.0 -s %s -t dynamic_ram_a"%size
+        cmd = "cxl create-region -m mem0 -d decoder0.0 -s %s -t dynamic_ram_0"%size
         rs = tools.execute_on_vm(cmd)
         print(rs)
         region_info = tools.output_to_json_data(rs)

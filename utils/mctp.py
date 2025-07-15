@@ -115,14 +115,20 @@ def run_fm_test():
     try_fmapi_test()
 
 def install_libcxlmi(url="https://github.com/moking/libcxlmi.git", branch="main", target_dir="/tmp/libcxlmi"):
-    need_start=True
-    if tools.path_exist_on_vm(target_dir):
-        cmd="rm -rf %s"%target_dir
+    if not tools.path_exist_on_vm(target_dir):
+        # cmd = "rm -rf %s"%target_dir
+        # tools.execute_on_vm(cmd, echo=True)
+
+        tools.install_packages_on_vm("meson libdbus-1-dev git cmake locales")
+        cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
         tools.execute_on_vm(cmd, echo=True)
 
-    tools.install_packages_on_vm("meson libdbus-1-dev git cmake locales")
-    cmd="git clone -b %s --single-branch %s %s"%(branch, url, target_dir)
-    tools.execute_on_vm(cmd, echo=True)
+    local_code = os.path.expanduser("~/cxl/libcxlmi-main")
+    if os.path.exists(local_code):
+        print("Copy file from local to VM")
+        tools.copy_to_remote(local_code+"/src/cxlmi/cxlmi.c",
+                             target_dir+"/src/cxlmi/")
+
     cmd="cd %s; meson setup -Dlibdbus=enabled build; meson compile -C build;"%target_dir
     tools.execute_on_vm(cmd, echo=True)
     prog = target_dir+"/build/examples/cxl-mctp"
