@@ -106,7 +106,7 @@ def install_ndctl(dir="/tmp/ndctl"):
     cmd= "git meson bison pkg-config cmake libkmod-dev libudev-dev uuid-dev libjson-c-dev libtraceevent-dev libtracefs-dev asciidoctor keyutils libudev-dev libkeyutils-dev libiniparser-dev libsystemd-dev"
     url = tools.system_env("ndctl_url")
     if not url:
-        url="https://github.com/pmem/ndctl.git",
+        url="https://github.com/pmem/ndctl.git"
     branch = tools.system_env("ndctl_branch")
     if not branch:
         branch = "main"
