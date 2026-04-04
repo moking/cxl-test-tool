@@ -1,6 +1,6 @@
 # cxl-test-tool: a tool to make cxl test with kernel and qemu setup easier
 
-* NOTE: cxl-tool.sh is not maintained anymore, always use cxl-tool.py.
+The command-line interface is **`cxl-tool.py`** only. The old `cxl-tool.sh` wrapper has been removed from this repository. If you still use a `cxl-tool` symlink or shell alias, point it at `cxl-tool.py` (or run `python3 cxl-tool.py`).
 
 * For feedback, please email nifan.cxl@gmail.com.
 * If you like the tool, please star it to attract more people's interests.
@@ -11,7 +11,7 @@
 
 * Now you can test bare metal with simple configuration, see commit 87697211e3a96aaec946baa57e9b18f6d31401f8
 
-* Done: recently I started to move the code to python so it is easier to support more complicated use workflow. cxl-tool.py is the new main file.*
+* The implementation is Python (`cxl-tool.py`) so workflows like DCD, MCTP, and RAS are easier to extend.*
 <pre>
 1. Updated DCD test workflow;
 2. Add mctp setup;
