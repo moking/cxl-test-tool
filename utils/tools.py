@@ -164,10 +164,6 @@ def system_path(name):
         return ""
     return os.path.expanduser(path.strip("\""))
 
-def append_to_file(file, s):
-    with open(file, "a") as f:
-        f.write(s)
-
 def write_to_file(file, s):
     with open(file, "w") as f:
         f.write(s)
@@ -213,15 +209,6 @@ def command_found_on_vm(cmd):
     if rs == "0":
         return False
     return True
-
-def parse_json(file):
-    with open(file, 'r') as file:
-        # Parse the JSON data into a Python dictionary
-        data=[]
-        try:
-            data = json.load(file)
-        finally:
-            return data
 
 def output_to_json_data(output):
     # Regex matches the first {...} or [{...}] block

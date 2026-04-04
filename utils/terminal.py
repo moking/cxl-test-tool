@@ -1,9 +1,5 @@
-import time
 import subprocess
 import utils.tools as tool
-# Define the VM's SSH details
-
-password = None  # Use None if using a private key
 
 def gdb_on_vm(prog, hostname="localhost"):
     username = tool.system_env("vm_usr")

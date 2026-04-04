@@ -50,7 +50,7 @@ def copy_host_ssh_key(img, img_format="raw"):
         print("%s image not found"%img)
         return False
 
-    suffix=tool.ssh_cmd("date +%N")
+    suffix=tool.sh_cmd("date +%N")
     mnt = "/tmp/mnt-%s"%suffix
     cmd = "mkdir %s"%mnt
     tool.sh_cmd(cmd)
@@ -91,7 +91,7 @@ def copy_host_ssh_key(img, img_format="raw"):
     if img_format != "raw":
         cmd = "sudo qemu-nbd -d /dev/nbd0"
         print(tool.sh_cmd(cmd, echo=True))
-    sh_cmd("rmdir %s"%mnt)
+    tool.sh_cmd("rmdir %s"%mnt)
     return rs
 
 

@@ -358,15 +358,6 @@ def create_namespace(region):
 
         return ns,dax
 
-def destroy_namespace(ns):
-    if not ns:
-        print("Cannot delete namespace due to wrong namespace input")
-        return "ERROR"
-    cmd="cxl destroy-namespace %s -f"%(ns)
-    print("# "+cmd)
-    rs=tools.execute_on_vm(cmd)
-    print(rs)
-
 def find_endpoint_num(memdev):
     cmd="cxl list -E -m %s"%memdev
     out=tools.execute_on_vm(cmd)
