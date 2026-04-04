@@ -2,8 +2,6 @@
 import os
 import subprocess
 import argparse
-import subprocess
-import psutil
 import shutil
 import filecmp
 import time
@@ -18,8 +16,6 @@ from utils.tools import run_qemu as run_qemu
 from utils.tools import shutdown_vm as shutdown_vm
 from utils.tools import vm_is_running as vm_is_running
 from utils.tools import sh_cmd as sh_cmd
-from utils.tools import bg_cmd as bg_cmd
-from utils.tools import append_to_file as append_to_file
 from utils.tools import write_to_file as write_to_file
 from utils.tools import process_id as process_id
 from utils.tools import execute_on_vm as execute_on_vm
@@ -34,50 +30,6 @@ from utils.config import parse_config as parse_config
 ndctl_dir="~/ndctl"
 
 topo=""
-
-def expend_variable(value):
-    if "$" not in value:
-        return value;
-    i=0;
-    rs=""
-    items=value.split()
-    for item in items:
-        if not item:
-            continue
-        item=item.strip()
-        if item:
-            item=item.strip("\"")
-        if item and item[0] == "$":
-            name=item[1:]
-            item=os.getenv(name.strip("\""))
-            if not item:
-                continue
-            item = item.strip("\"")
-        rs += item + " "
-    
-    return rs
-
-def read_config(conf):
-    with open(conf, 'r') as file:
-        for line in file:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                pos=line.find("=")
-                name = line[:pos].strip()
-                val = line[pos+1:].strip()
-                has_quote=False
-                if "\"" in val:
-                    has_quote=True
-                    val=val.strip("\"")
-                new=expend_variable(val)
-                #if new.startswith("~"):
-                    #new=os.environ.get('HOME')+new[1:]
-                if has_quote:
-                    os.environ[name]="\""+new+"\""
-                else:
-                    os.environ[name]=new
-                print(os.environ[name])
-
 
 def compile_ndctl(dir):
     cmd = "cd %s;\
@@ -151,7 +103,7 @@ def gdb_qemu():
     gdb_process(pid)
 
 def gdb_kernel():
-    if not vm_is_running:
+    if not vm_is_running():
         print("VM is not running, skip debug")
         return
     path=system_path("KERNEL_ROOT")
@@ -204,7 +156,7 @@ def create_qemu_image(img_path, size="16g", ubuntu=False):
     tools.install_packages("debootstrap")
     cmd = "whereis debootstrap"
     rs = sh_cmd(cmd)
-    rs.replace("debootstrap:", "")
+    rs = rs.replace("debootstrap:", "").strip()
     if not rs:
         print("tool: debootstrap not found, exit")
         return
@@ -279,7 +231,6 @@ def cxl_pmem_test(memdev):
         print("VM is not running, skip")
         return
     if not path_exist_on_vm(ndctl_dir) or not ndctl_installed():
-        ndctl_url=os.getenv("ndctl_url")
         rs = install_ndctl(dir=ndctl_dir)
         if not rs:
             return
@@ -314,11 +265,9 @@ def cxl_vmem_test(memdev):
         print("VM is not running, skip")
         return
     if not path_exist_on_vm(ndctl_dir):
-        ndctl_url=os.getenv("ndctl_url")
         rs = install_ndctl(dir=ndctl_dir)
         if not rs:
             return
-
 
     if not cxl.cxl_driver_loaded():
         cxl.load_driver()
@@ -338,8 +287,7 @@ def dcd_test(memdev):
         return
 
     if not path_exist_on_vm(ndctl_dir):
-        ndctl_url=os.getenv("ndctl_url")
-        rs = install_ndctl(url=ndctl_url, dir=ndctl_dir)
+        rs = install_ndctl(dir=ndctl_dir)
         if not rs:
             return
 
