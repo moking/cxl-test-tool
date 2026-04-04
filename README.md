@@ -2,6 +2,8 @@
 
 The command-line interface is **`cxl-tool.py`** only. The old `cxl-tool.sh` wrapper has been removed from this repository. If you still use a `cxl-tool` symlink or shell alias, point it at `cxl-tool.py` (or run `python3 cxl-tool.py`).
 
+**Command-line reference:** every flag and option is described in **[readme.cmd](readme.cmd)** (grouped by topic, with behavior notes). For the short built-in help, run `./cxl-tool.py --help`.
+
 * For feedback, please email nifan.cxl@gmail.com.
 * If you like the tool, please star it to attract more people's interests.
 
@@ -99,6 +101,8 @@ This command can be used for poison injection, dc extent add/release
 
 # print out help information to show all available options
 cxl-tool.py --help
+
+Longer explanations for each option: see [readme.cmd](readme.cmd).
 
 # Instructions for DCD related test
 1. Apply the patch test-workflows/0001-qapi-cxl.json-Add-QMP-interfaces-to-print-out-accept.patch on top of qemu source code which have DCD emulation support;
