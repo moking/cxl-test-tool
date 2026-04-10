@@ -1,4 +1,4 @@
-import subprocess;
+import subprocess
 import time
 import psutil
 import json
@@ -125,7 +125,7 @@ def install_packages(package_str):
         cmd="sudo apt-get install -y %s"%" ".join(packages)
         exec_shell_direct(cmd)
     elif archlinux_release():
-        install_packages_archlinux(package_str)
+        install_packages_archlinux(" ".join(packages))
     for i in packages:
         if not package_installed(i):
             print("%s not installed"%i)
@@ -194,7 +194,7 @@ def path_exist_on_vm(path):
         print("VM is not running, exit")
         return False
     cmd="if [ -e %s ]; then echo 1; else echo 0; fi"%(path)
-    rs = execute_on_vm(cmd)
+    rs = (execute_on_vm(cmd) or "").strip()
     if rs != "0":
         return True
     else:
@@ -205,7 +205,7 @@ def command_found_on_vm(cmd):
         print("VM is not running, exit")
         return False
     s="which %s | grep -c %s"%(cmd, cmd)
-    rs = execute_on_vm(s)
+    rs = (execute_on_vm(s) or "").strip()
     if rs == "0":
         return False
     return True
@@ -237,7 +237,8 @@ def qmp_port():
                     if key in c:
                         found=True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue;
+            continue
+    return None
 
 def issue_qmp_cmd(file):
     if not file:
@@ -245,6 +246,9 @@ def issue_qmp_cmd(file):
         return
 
     port=qmp_port()
+    if port is None:
+        print("No QEMU process with -qmp found; cannot determine QMP port")
+        return
 
     if not package_installed("ncat"):
         install_packages("ncat")
@@ -319,8 +323,7 @@ def setup_kernel(url, branch, kernel_dir, kconfig="", mod_path="/opt/"):
         if not cmd:
             cmd="N"
         if cmd.lower() == "y":
-            cmd="git pull"
-            exec_shell_direct(cmd, echo=True)
+            exec_shell_direct("cd %s; git pull"%kernel_dir, echo=True)
         else:
             recompile = False
     if not kconfig:
@@ -427,16 +430,14 @@ def vm_is_running(key=""):
     name="qemu-system"
     usr=sh_cmd("whoami")
     for process in psutil.process_iter(['name', 'username']):
-        if usr != process.info["username"]:
-            continue
         try:
-            # Check if the process name matches
+            if usr != process.info.get("username"):
+                continue
             if name in process.info['name']:
                 cmd = process.cmdline()
                 if not key or key in cmd:
                     return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            # Handle the cases where the process might terminate during iteration
             continue
     return False
 
@@ -546,7 +547,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_i
 
     if not qemu_img:
         qemu_img = system_path("QEMU_IMG")
-    cmd=" -gdb tcp::%s "%gdb_port+extra_opts+ " -kernel "+kernel+" -append "+os.getenv("KERNEL_CMD")+ \
+    cmd=" -gdb tcp::%s "%gdb_port+extra_opts+ " -kernel "+kernel+" -append "+(os.getenv("KERNEL_CMD") or "")+ \
             " -smp " +num_cpus+ \
             " -accel "+accel_mode + \
             " -serial mon:stdio "+ \
@@ -568,9 +569,7 @@ def run_qemu(qemu, topo, kernel, accel_mode=accel_mode, run_direct=False, qemu_i
     if vm_is_running(key="tcp::%s"%gdb_port):
         write_to_file(status_file, "QEMU:running")
         write_to_file("%s/topo%d"%(log_dir, port_offset), topo);
-        usr = system_path("vm_usr")
-        if not usr:
-            usr = "root"
+        usr = system_env("vm_usr")
         print("QEMU instance is up, access it: ssh %s@localhost -p %s"%(usr, ssh_port),
               flush = True)
     else:
@@ -582,7 +581,7 @@ def git_clone(url, branch, dst_dir):
     if os.path.exists(dst_dir) and len(os.listdir(dst_dir)) > 0:
         ch = input("%s exists, do you want to delete it before processing(y/n):")
         if ch and ch.lower() == "y":
-            cmd = "rf -rf %s"%dst_dir
+            cmd = "rm -rf %s"%dst_dir
             exec_shell_direct(cmd)
         else:
             return False
@@ -597,7 +596,7 @@ def remote_directory_empty(path):
     if not path_exist_on_vm(path):
         return True
     cmd = "ls -A %s | wc -l"%path
-    rs = execute_on_vm(cmd, echo=True)
+    rs = (execute_on_vm(cmd, echo=True) or "").strip()
     if rs != "0":
         return False
     return True
@@ -612,7 +611,4 @@ def git_clone_on_vm(url, branch, dst_dir):
             return False
     cmd="git clone -b %s --single-branch %s %s"%(branch, url, dst_dir)
     exec_shell_remote_direct(cmd)
-    if remote_directory_empty(dst_dir):
-        return True
-    else:
-        return False
+    return not remote_directory_empty(dst_dir)

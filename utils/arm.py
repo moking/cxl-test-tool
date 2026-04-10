@@ -206,7 +206,7 @@ def start_vm(qemu_dir, topo, kernel, bios=""):
             " -device virtio-blk-pci,drive=hd" + \
             " %s"%SHARED_CFG + \
             " %s"%net_config + \
-            " -append "+os.getenv("KERNEL_CMD")+ \
+            " -append "+(os.getenv("KERNEL_CMD") or "")+ \
             " -nographic -no-reboot" +\
             " -monitor telnet:127.0.0.1:12345,server,"+wait_flag+\
             " -virtfs local,path=%s,mount_tag=homeshare,security_model=mapped "%tool.system_path("HOME")+ \
