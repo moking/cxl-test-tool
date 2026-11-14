@@ -104,6 +104,15 @@ cxl-tool.py --help
 
 Longer explanations for each option: see [readme.cmd](readme.cmd).
 
+# Automated kernel build and CXL boot test
+`test-workflows/kernel-test.py <kernel_dir>` runs without prompts:
+1. uses the tree's `.config` (or copies `kconfig.example`), runs `make olddefconfig`, builds, and installs modules to `/opt/lib/modules`;
+2. boots the new `bzImage` in QEMU with a CXL topology (`-T`, default RP1) and waits for SSH;
+3. checks that the guest runs the new kernel, loads/unloads/reloads the CXL drivers, finds a memdev in sysfs and in `cxl list`, and scans `dmesg` for oops/BUG/WARNING;
+4. powers off the VM and exits 0 on success, 1 on any failure.
+
+Use `--skip-build` to test an existing build and `--keep-vm` to leave the VM running for debugging. The guest's dmesg is saved to `kernel-test-dmesg.log` in `cxl_test_log_dir`.
+
 # Instructions for DCD related test
 1. Apply the patch test-workflows/0001-qapi-cxl.json-Add-QMP-interfaces-to-print-out-accept.patch on top of qemu source code which have DCD emulation support;
 2. Create a cxl topology that has DCD support (only single dcd device tested) in .cxl-topology.xml;
